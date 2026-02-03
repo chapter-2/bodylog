@@ -4,8 +4,10 @@ export interface WorkoutSet {
 }
 
 export interface Exercise {
-  name: string;
+  name: string;           
+  selectedVariant?: string; 
   sets: WorkoutSet[];
+  note?: string;          
 }
 
 export interface WorkoutDay {
@@ -15,6 +17,7 @@ export interface WorkoutDay {
   time?: string;
   exercises: Exercise[];
   completed: boolean;
+  sessionNote?: string;   
 }
 
 export interface BulkEntry {
@@ -22,6 +25,16 @@ export interface BulkEntry {
   date: string;
   weight: number;
   notes?: string;
+}
+
+export interface GymSession {
+  week: number;
+  day: string;
+  date: string;
+  time?: string;
+  exercises: Exercise[];
+  completed: boolean;
+  sessionNote?: string;   
 }
 
 export interface GymProgram {

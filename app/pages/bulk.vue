@@ -170,11 +170,9 @@ function handleSaved() {
 
 onMounted(async () => {
     isLoading.value = true;
-    
-    // Check auth state
     checkAuth();
     await nextTick();
-    
+
     try {
         if (isAuthenticated.value) {
             await loadWeightData();
@@ -182,9 +180,7 @@ onMounted(async () => {
     } catch (error) {
         console.error("Error loading bulk data:", error);
     } finally {
-        setTimeout(() => {
-            isLoading.value = false;
-        }, 500);
+        isLoading.value = false;
     }
 });
 </script>

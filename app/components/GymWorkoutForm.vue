@@ -34,6 +34,34 @@
         </div>
 
         <form v-else @submit.prevent="saveWorkout" class="divide-y divide-separator">
+
+            <div class="p-6 md:p-8 bg-[#fffef5] border-b border-yellow-200">
+                <button 
+                    type="button"
+                    @click="showSessionNote = !showSessionNote"
+                    class="text-sm font-bold text-foreground-primary hover:text-primary flex items-center gap-2 w-full transition-colors"
+                >
+                    <MessageSquare class="w-4 h-4 text-yellow-600" />
+                    <span>Session Notes</span>
+                    <span v-if="sessionNote" class="text-xs font-mono text-primary ml-auto">Has note ✓</span>
+                    <span v-else class="text-xs font-mono text-foreground-text/40 ml-auto">e.g. injury update, energy level</span>
+                    <ChevronDown class="w-4 h-4 transition-transform" :class="{ 'rotate-180': showSessionNote }" />
+                </button>
+
+                <div v-if="showSessionNote || sessionNote" class="mt-3">
+                    <textarea 
+                        v-model="sessionNote"
+                        rows="2"
+                        placeholder="Kenapa hari ini beda? Cerita singkat tentang kondisi lo."
+                        class="w-full text-sm font-mono bg-yellow-50 border border-yellow-300 rounded p-3 text-foreground-text focus:outline-none focus:border-yellow-500 placeholder:text-gray-400 resize-none"
+                    ></textarea>
+                    <p class="text-xs font-mono text-foreground-text/40 mt-1">
+                        Ini yang AI Coach baca untuk ngerti konteks lo hari ini.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ─── EXERCISES ─── -->
             <div
                 v-for="(exercise, exIdx) in exercises"
                 :key="exIdx"
@@ -41,10 +69,36 @@
             >
                 <div class="flex justify-between items-start mb-4 gap-4">
                     <div class="flex flex-col gap-1 w-full">
+
+                        <!-- Exercise name + variant selector -->
                         <h4 class="text-2xl font-bold group-hover:text-primary transition-colors uppercase leading-tight">
-                            {{ exercise.name }}
+                            {{ exercise.variants ? exercise.name : exercise.name }}
                         </h4>
-                        
+
+                        <!-- Variant radio buttons — only shown if exercise has variants -->
+                        <div v-if="exercise.variants" class="flex flex-wrap gap-2 mt-2">
+                            <label
+                                v-for="variant in exercise.variants"
+                                :key="variant"
+                                class="flex items-center gap-2 cursor-pointer group/variant"
+                            >
+                                <input
+                                    type="radio"
+                                    :name="`variant-${exIdx}`"
+                                    :value="variant"
+                                    v-model="exercise.selectedVariant"
+                                    class="peer hidden"
+                                />
+                                <span class="w-4 h-4 border-2 border-separator rounded-full flex items-center justify-center transition-colors peer-checked:border-primary">
+                                    <span class="w-2 h-2 bg-primary rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></span>
+                                </span>
+                                <span class="font-mono text-sm text-foreground-text group-hover/variant:text-primary peer-checked:text-primary peer-checked:font-bold transition-colors">
+                                    {{ variant }}
+                                </span>
+                            </label>
+                        </div>
+
+                        <!-- Per-exercise note toggle -->
                         <button 
                             type="button"
                             @click="toggleNote(exIdx)"
@@ -52,7 +106,7 @@
                         >
                             <MessageSquare class="w-3 h-3" />
                             <span v-if="exercise.note" class="text-primary font-bold">Edit Note</span>
-                            <span v-else>Add Note (e.g., Gym crowded)</span>
+                            <span v-else>Add Note (e.g. Gym crowded)</span>
                         </button>
 
                         <div v-if="exercise.showNote || exercise.note" class="mt-2">
@@ -70,7 +124,7 @@
                             {{ exercise.sets.length }} SETS
                         </span>
                         <a 
-                            :href="`https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + ' form tutorial')}`" 
+                            :href="`https://www.youtube.com/results?search_query=${encodeURIComponent((exercise.selectedVariant || exercise.name) + ' form tutorial')}`" 
                             target="_blank"
                             class="flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-600 border border-red-100 rounded hover:bg-red-600 hover:text-white hover:border-red-600 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                         >
@@ -80,13 +134,17 @@
                     </div>
                 </div>
 
+                <!-- Last week reference -->
                 <div v-if="lastWeekData[exIdx]" class="mb-4 p-3 bg-background rounded border border-separator">
                     <span class="font-mono text-xs uppercase tracking-wider text-foreground-text opacity-70">
                         Last Week (W{{ week - 1 }}):
+                        <span v-if="lastWeekData[exIdx].exerciseName && lastWeekData[exIdx].exerciseName !== (exercise.selectedVariant || exercise.name)" class="text-primary ml-1">
+                            [{{ lastWeekData[exIdx].exerciseName }}]
+                        </span>
                     </span>
                     <div class="flex gap-2 mt-1 flex-wrap">
                         <span
-                            v-for="(set, idx) in lastWeekData[exIdx]"
+                            v-for="(set, idx) in lastWeekData[exIdx].sets"
                             :key="idx"
                             class="font-mono text-xs bg-white px-2 py-1 rounded border border-separator"
                         >
@@ -95,6 +153,7 @@
                     </div>
                 </div>
 
+                <!-- Set inputs -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div v-for="(set, setIdx) in exercise.sets" :key="setIdx" class="flex items-center gap-2">
                         <span class="font-mono text-xs text-primary w-6 pt-1">S{{ setIdx + 1 }}</span>
@@ -117,6 +176,7 @@
                 </div>
             </div>
 
+            <!-- ─── SUBMIT ─── -->
             <div class="p-8 bg-background">
                 <div class="flex flex-col md:flex-row items-center justify-between gap-6">
                     <label class="flex items-center gap-3 cursor-pointer group">
@@ -137,6 +197,7 @@
             </div>
         </form>
 
+        <!-- ─── LOGGING RULES MODAL ─── -->
         <transition name="fade">
             <div v-if="showRules" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" @click.self="showRules = false">
                 <div class="w-full max-w-sm bg-white border-2 border-foreground-primary p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative animate-bounce-in">
@@ -177,25 +238,36 @@
 
 <script setup lang="ts">
 import type { Exercise } from "~/types";
-import { Youtube, BedDouble, Check, Info, X, MessageSquare } from "lucide-vue-next";
+import { Youtube, BedDouble, Check, Info, X, MessageSquare, ChevronDown } from "lucide-vue-next";
 
+// ─── Extended UI types ───
 interface UIExercise extends Exercise {
+    variants?: string[];       
+    selectedVariant?: string;  
     note?: string;
     showNote?: boolean;
 }
 
+// ─── Props / Emits ───
 const props = defineProps<{ week: number; day: string; }>();
 const emit = defineEmits(["saved"]);
 const { isAuthenticated, secureFetch } = useAuth();
 
+// ─── State ───
 const exercises = ref<UIExercise[]>([]);
 const completed = ref(false);
 const saving = ref(false);
 const lastSaved = ref("");
 const saveError = ref("");
-const lastWeekData = ref<Record<number, string[]>>({});
+const lastWeekData = ref<Record<number, { sets: string[]; exerciseName: string }>>({});
 const showRules = ref(false);
 
+// Session note
+const sessionNote = ref("");
+const showSessionNote = ref(false);
+
+// ─── Program Templates ───
+// Names with " / " are variant groups. The UI will split them into radio options.
 const programTemplates: Record<string, { name: string; focus: string; exercises: string[] }> = {
     monday: {
         name: "SENIN",
@@ -224,13 +296,30 @@ const programTemplates: Record<string, { name: string; focus: string; exercises:
     },
 };
 
+// ─── Computed ───
 const dayName = computed(() => programTemplates[props.day]?.name || "REST DAY");
 const dayFocus = computed(() => programTemplates[props.day]?.focus || "Recover");
+
+// ─── Helpers ───
+
+function parseVariants(name: string): string[] | null {
+    if (!name.includes(" / ")) return null;
+    return name.split(" / ").map(v => v.trim());
+}
+
+function getSetCount(name: string): number {
+    return name.includes("Lateral Raise") || name.includes("Leg") || name.includes("Pull-Up") ? 4 : 3;
+}
+
+function effectiveName(ex: UIExercise): string {
+    return ex.selectedVariant || ex.name;
+}
 
 function toggleNote(index: number) {
     exercises.value[index].showNote = !exercises.value[index].showNote;
 }
 
+// ─── Initialization ───
 function initializeExercises() {
     const template = programTemplates[props.day];
     if (!template) {
@@ -238,31 +327,53 @@ function initializeExercises() {
         return;
     }
     exercises.value = template.exercises.map((name) => {
-        const numSets = name.includes("Lateral Raise") || name.includes("Leg") || name.includes("Pull-Up") ? 4 : 3;
+        const variants = parseVariants(name);
         return {
             name,
-            sets: Array(numSets).fill(null).map(() => ({ weight: 0, reps: 0 })),
-            note: "",     
-            showNote: false 
+            variants,
+            selectedVariant: variants ? variants[0] : undefined, // default to first variant
+            sets: Array(getSetCount(name)).fill(null).map(() => ({ weight: 0, reps: 0 })),
+            note: "",
+            showNote: false,
         };
     });
 }
 
+// ─── Load last week data ───
 async function loadLastWeekData() {
     if (props.week <= 1) { lastWeekData.value = {}; return; }
     try {
-        const dayNameValue = dayName.value;
-        if (dayNameValue === "REST DAY") return;
-        const { data } = await secureFetch(`/api/gym/get?day=${dayNameValue}`);
+        if (dayName.value === "REST DAY") return;
+        const { data } = await secureFetch(`/api/gym/get?day=${dayName.value}`);
+
         const lastWeekWorkouts = data.filter((row: any) => parseInt(row[0]) === props.week - 1);
         if (lastWeekWorkouts.length > 0) {
             const template = programTemplates[props.day];
-            const dataMap: Record<number, string[]> = {};
-            template?.exercises.forEach((exerciseName, idx) => {
-                const exerciseRow = lastWeekWorkouts.find((row: any) => row[4] === exerciseName);
+            const dataMap: Record<number, { sets: string[]; exerciseName: string }> = {};
+
+            template?.exercises.forEach((templateName, idx) => {
+                const variants = parseVariants(templateName);
+
+                let exerciseRow: any = null;
+                if (variants) {
+                    for (const v of variants) {
+                        exerciseRow = lastWeekWorkouts.find((row: any) => row[4] === v);
+                        if (exerciseRow) break;
+                    }
+                    if (!exerciseRow) {
+                        exerciseRow = lastWeekWorkouts.find((row: any) => row[4] === templateName);
+                    }
+                } else {
+                    exerciseRow = lastWeekWorkouts.find((row: any) => row[4] === templateName);
+                }
+
                 if (exerciseRow) {
-                    const sets = [row[5], row[6], row[7], row[8]].filter((s) => s && s !== "-" && s !== undefined);
-                    dataMap[idx] = sets;
+                    const sets = [exerciseRow[5], exerciseRow[6], exerciseRow[7], exerciseRow[8]]
+                        .filter((s: any) => s && s !== "-" && s !== undefined);
+                    dataMap[idx] = {
+                        sets,
+                        exerciseName: exerciseRow[4], 
+                    };
                 }
             });
             lastWeekData.value = dataMap;
@@ -270,16 +381,46 @@ async function loadLastWeekData() {
     } catch (error) { console.error("Failed to load last week data:", error); }
 }
 
+// ─── Load current session (restore previously saved data for this week+day) ───
 async function loadCurrentSession() {
     try {
-        const dayNameValue = dayName.value;
-        if (dayNameValue === "REST DAY") return;
-        const { data } = await secureFetch(`/api/gym/get?day=${dayNameValue}`);
+        if (dayName.value === "REST DAY") return;
+        const { data } = await secureFetch(`/api/gym/get?day=${dayName.value}`);
+
         const currentSessionRows = data.filter((row: any) => parseInt(row[0]) === props.week);
         if (currentSessionRows.length > 0) {
+
+            // Restore session note from first row's column[11]
+            const firstRow = currentSessionRows[0];
+            if (firstRow[11]) {
+                sessionNote.value = firstRow[11];
+                showSessionNote.value = true;
+            }
+
             exercises.value.forEach((exercise) => {
-                const savedRow = currentSessionRows.find((row: any) => row[4] === exercise.name);
+                const variants = exercise.variants;
+
+                // Find saved row: match by variant name or original name
+                let savedRow: any = null;
+                if (variants) {
+                    for (const v of variants) {
+                        savedRow = currentSessionRows.find((row: any) => row[4] === v);
+                        if (savedRow) break;
+                    }
+                    if (!savedRow) {
+                        savedRow = currentSessionRows.find((row: any) => row[4] === exercise.name);
+                    }
+                } else {
+                    savedRow = currentSessionRows.find((row: any) => row[4] === exercise.name);
+                }
+
                 if (savedRow) {
+                    // If a variant was saved, restore the radio selection
+                    if (variants && variants.includes(savedRow[4])) {
+                        exercise.selectedVariant = savedRow[4];
+                    }
+
+                    // Restore sets
                     exercise.sets.forEach((set, idx) => {
                         const setString = savedRow[5 + idx];
                         if (setString && setString !== "-") {
@@ -290,16 +431,20 @@ async function loadCurrentSession() {
                             }
                         }
                     });
+
                     if (savedRow[10]) {
                         exercise.note = savedRow[10];
                     }
                 }
             });
+
+            // Restore completed flag
             if (currentSessionRows[0][9] === "YES") { completed.value = true; }
         }
     } catch (error) { console.error("Failed to load current session:", error); }
 }
 
+// ─── Save ───
 async function saveWorkout() {
     if (dayName.value === "REST DAY") return;
     if (!isAuthenticated.value) { navigateTo("/login"); return; }
@@ -312,6 +457,13 @@ async function saveWorkout() {
         const dateStr = now.toLocaleDateString("id-ID");
         const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 
+        const exercisePayload = exercises.value.map(ex => ({
+            name: effectiveName(ex),       
+            templateName: ex.name,         
+            sets: ex.sets,
+            note: ex.note || "",
+        }));
+
         await secureFetch("/api/gym/save", {
             method: "POST",
             body: {
@@ -319,8 +471,9 @@ async function saveWorkout() {
                 day: dayName.value,
                 date: dateStr,
                 time: timeStr,
-                exercises: exercises.value, 
+                exercises: exercisePayload,
                 completed: completed.value,
+                sessionNote: sessionNote.value || "",
             },
         });
 
@@ -341,11 +494,20 @@ async function saveWorkout() {
 
 watch(() => props.day, async () => {
     initializeExercises();
-    if (dayName.value !== "REST DAY") { await Promise.all([loadLastWeekData(), loadCurrentSession()]); }
+    sessionNote.value = "";
+    showSessionNote.value = false;
+    if (dayName.value !== "REST DAY") {
+        await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+    }
 }, { immediate: true });
 
 watch(() => props.week, () => {
-    if (dayName.value !== "REST DAY") { loadLastWeekData(); loadCurrentSession(); }
+    sessionNote.value = "";
+    showSessionNote.value = false;
+    if (dayName.value !== "REST DAY") {
+        loadLastWeekData();
+        loadCurrentSession();
+    }
 });
 </script>
 

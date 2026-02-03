@@ -403,13 +403,10 @@ watch(currentWeek, () => {
 
 onMounted(async () => {
     isLoading.value = true;
-    
-    // Check auth state
     checkAuth();
     await nextTick();
-    
     currentWeek.value = calculatedWeek.value;
-    
+
     try {
         if (isAuthenticated.value) {
             await loadHistory();
@@ -418,9 +415,8 @@ onMounted(async () => {
     } catch (error) {
         console.error("Error loading gym data:", error);
     } finally {
-        setTimeout(() => {
-            isLoading.value = false;
-        }, 500);
+        // ── FIXED: no more arbitrary setTimeout. Loading ends when data is actually ready. ──
+        isLoading.value = false;
     }
 });
 </script>

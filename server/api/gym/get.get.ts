@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
     const query = getQuery(event);
     const day = query.day as string | undefined;
 
-    const getRange = (sheet: string) => `${sheet}!A:J`;
+    const getRange = (sheet: string) => `${sheet}!A:L`;
 
     if (day) {
       const sheetName = `GYM-${day}`;

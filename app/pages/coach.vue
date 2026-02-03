@@ -221,7 +221,14 @@ let timer: any = null;
 
 function openGemini() {
     window.open("https://gemini.google.com/app", "_blank");
-    // showSuccessModal.value = false;
+}
+
+function csvField(val: string): string {
+    if (!val) return "";
+    if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+        return `"${val.replace(/"/g, '""')}"`;
+    }
+    return val;
 }
 
 async function handleSummonTrainer() {
@@ -232,63 +239,110 @@ async function handleSummonTrainer() {
 
     loading.value = true;
 
-    const AI_PROMPT = `
-Act as an elite Personal Trainer and Nutritionist.
-I have attached a CSV file containing my "Gym Logs" and "Body Weight Logs" (Bulk progress).
-
-**My Stats:**
-- Height: ${userHeight.value} cm
-
-Please analyze my data and provide a concise report with:
-1. **Progressive Overload Check**: Am I getting stronger? Point out exercises where I'm stalling.
-2. **Bulk Analysis**: Calculate my BMI based on my height (${userHeight.value}cm) and latest weight. Am I gaining too fast/slow (Target: 0.5kg/week)?
-3. **Weak Points**: Based on my lifts, what body parts seem lagging?
-4. **Action Plan**: Give me 3 specific bullet points on what I should focus on next week.
-
-Be brutal, direct, and data-driven. Don't give generic advice.
-`;
-
     try {
         const [gymRes, bulkRes] = await Promise.all([
             secureFetch("/api/gym/get"),
             secureFetch("/api/bulk/get"),
         ]);
 
-        const gymData = gymRes.data || [];
-        const bulkData = bulkRes.data || [];
+        const gymData: any[] = gymRes.data || [];
+        const bulkData: any[] = bulkRes.data || [];
 
-        let csvContent = "TYPE,WEEK,DATE,METRIC_1,METRIC_2,METRIC_3,NOTES\n";
+        // ─── Build TRAINING CONTEXT block from all notes ───
+        // Collect unique session notes and per-exercise notes, grouped by week+day
+        const contextLines: string[] = [];
+        const sessionNotesMap = new Map<string, string>(); // "W3 SENIN" -> note
+
+        gymData.forEach((row: any[]) => {
+            if (row[0] === "Week") return; // skip header
+            const week = row[0];
+            const day = row[1];
+            const exerciseName = row[4];
+            const exerciseNote = row[10]; // per-exercise note
+            const sessionNote = row[11];  // session-level note
+
+            const key = `W${week} ${day}`;
+
+            if (sessionNote && !sessionNotesMap.has(key)) {
+                sessionNotesMap.set(key, sessionNote);
+            }
+
+            // Per-exercise note
+            if (exerciseNote) {
+                contextLines.push(`- ${key} | ${exerciseName}: "${exerciseNote}"`);
+            }
+        });
+
+        // Prepend session notes (they come first, they're the big-picture context)
+        const sessionNoteLines: string[] = [];
+        sessionNotesMap.forEach((note, key) => {
+            sessionNoteLines.push(`- ${key} Session: "${note}"`);
+        });
+
+        const allContextLines = [...sessionNoteLines, ...contextLines];
+        const trainingContextBlock = allContextLines.length > 0
+            ? `\n**TRAINING CONTEXT & NOTES (READ THESE FIRST — they explain WHY certain numbers look the way they do):**\n${allContextLines.join("\n")}\n`
+            : "";
+
+        // ─── Build CSV ───
+        let csvContent = "TYPE,WEEK,DAY,DATE,EXERCISE,SET1,SET2,SET3,SET4,COMPLETED,EXERCISE_NOTE,SESSION_NOTE\n";
 
         // BULK DATA
         bulkData.forEach((row: any[]) => {
             if (row[0] === "Week") return;
-            const w = row[2] ? row[2] + "kg" : "-";
-            const n = row[3] || "";
-            csvContent += `BULK,${row[0]},${row[1]},${w},-,-,${n}\n`;
+            csvContent += `BULK,${row[0]},,${row[1]},,,,,,,${csvField(row[3] || "")},\n`;
+            // Also add a dedicated bulk weight row
+            csvContent += `BULK_WEIGHT,${row[0]},,${row[1]},"Weight: ${row[2]}kg",,,,,,,,\n`;
         });
 
         // GYM DATA
         gymData.forEach((row: any[]) => {
             if (row[0] === "Week") return;
-            const exercise = `"${row[4]}"`;
-            const sets = `"${row[5]} | ${row[6]} | ${row[7]}"`;
-            csvContent += `GYM,${row[0]},${row[2]},${exercise},${sets},-,${row[1]}\n`;
+            csvContent += [
+                "GYM",
+                row[0],                         // week
+                row[1],                         // day
+                row[2],                         // date
+                csvField(row[4] || ""),          // exercise name
+                csvField(row[5] || "-"),         // set1
+                csvField(row[6] || "-"),         // set2
+                csvField(row[7] || "-"),         // set3
+                csvField(row[8] || "-"),         // set4
+                row[9] || "NO",                 // completed
+                csvField(row[10] || ""),         // exercise note
+                csvField(row[11] || ""),         // session note
+            ].join(",") + "\n";
         });
 
-        const blob = new Blob([csvContent], {
-            type: "text/csv;charset=utf-8;",
-        });
+        // ─── Download CSV ───
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute(
-            "download",
-            `bodylog_export_${new Date().toISOString().slice(0, 10)}.csv`,
-        );
+        link.setAttribute("download", `bodylog_export_${new Date().toISOString().slice(0, 10)}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
+        // ─── Build AI Prompt ───
+        const AI_PROMPT = `Act as an elite Personal Trainer and Nutritionist.
+I have attached a CSV file containing my "Gym Logs" and "Body Weight Logs" (Bulk progress).
+
+**My Stats:**
+- Height: ${userHeight.value} cm
+${trainingContextBlock}
+**IMPORTANT:** Before analyzing my numbers, read the Training Context & Notes above. Some exercises have reduced weight or changed equipment due to injury or equipment availability. Do NOT flag those as regression — understand WHY before judging.
+
+Please analyze my data and provide a concise report with:
+1. **Progressive Overload Check**: Am I getting stronger? Point out exercises where I'm genuinely stalling (ignore ones explained by injury/notes).
+2. **Bulk Analysis**: Calculate my BMI based on my height (${userHeight.value}cm) and latest weight. Am I gaining too fast/slow (Target: 0.5kg/week)?
+3. **Weak Points**: Based on my lifts, what body parts seem lagging?
+4. **Action Plan**: Give me 3 specific bullet points on what I should focus on next week.
+
+Be brutal, direct, and data-driven. Don't give generic advice.`;
+
+        // ─── Copy prompt to clipboard ───
         await navigator.clipboard.writeText(AI_PROMPT.trim());
 
         loading.value = false;

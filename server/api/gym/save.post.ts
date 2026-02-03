@@ -1,7 +1,7 @@
 import type { GymSession } from "~/types";
 
 export default defineEventHandler(async (event) => {
-    requireAuth(event); 
+    requireAuth(event);
 
     try {
         const body = await readBody<GymSession>(event);
@@ -11,45 +11,51 @@ export default defineEventHandler(async (event) => {
         const sheetName = `GYM-${body.day}`;
         console.log("Saving gym session to sheet:", sheetName);
 
+        // ── Read existing sheet (A:L now — 12 columns) ──
         const existingResponse = await sheets.spreadsheets.values.get({
             spreadsheetId,
-            range: `${sheetName}!A:K`, 
+            range: `${sheetName}!A:L`,
         });
 
         const rawRows = existingResponse.data.values || [];
-        
+
+        const expectedHeader = [
+            "Week", "Day", "Date", "Time",
+            "Exercise Name", "Set 1", "Set 2", "Set 3", "Set 4",
+            "Completed", "Notes", "Session Note"
+        ];
+
         if (rawRows.length === 0) {
-            rawRows.push([
-                "Week", "Date", "Time", "Exercise Focus", 
-                "Exercise Name", "Set 1", "Set 2", "Set 3", "Set 4", 
-                "Completed", "Notes"
-            ]);
+            rawRows.push(expectedHeader);
+        } else {
+            rawRows[0] = expectedHeader;
         }
 
         const dataRows = rawRows.slice(1);
-        
+
         body.exercises.forEach((exercise) => {
-            const setsData = exercise.sets.map(s => 
+            const setsData = exercise.sets.map(s =>
                 (s.weight > 0 || s.reps > 0) ? `${s.weight}kg × ${s.reps}` : "-"
             );
             while (setsData.length < 4) setsData.push("-");
 
-            // @ts-ignore
-            const exerciseNote = exercise.note || ""; 
+            const exerciseNote = exercise.note || "";
+            const sessionNote = body.sessionNote || "";
 
-            const existingRowIndex = dataRows.findIndex(row => 
+            const existingRowIndex = dataRows.findIndex(row =>
                 row[0] == body.week && row[4] == exercise.name
             );
 
             const newRow = [
-                body.week.toString(),
-                body.date,
-                body.time,
-                "", 
-                exercise.name,
-                ...setsData,
-                body.completed ? "YES" : "NO",
-                exerciseNote 
+                body.week.toString(),       // 0: Week
+                body.day,                   // 1: Day
+                body.date,                  // 2: Date
+                body.time || "",            // 3: Time
+                exercise.name,              // 4: Exercise Name (already the effective/variant name from frontend)
+                ...setsData,                // 5-8: Sets
+                body.completed ? "YES" : "NO", // 9: Completed
+                exerciseNote,               // 10: Per-exercise note
+                sessionNote,                // 11: Session note (same for all exercises this session)
             ];
 
             if (existingRowIndex >= 0) {
@@ -75,7 +81,7 @@ export default defineEventHandler(async (event) => {
         });
 
         try {
-            await styleWorkoutTable(sheets, spreadsheetId, sheetName, finalRows.length, 11);
+            await styleWorkoutTable(sheets, spreadsheetId, sheetName, finalRows.length, 12);
         } catch (e) {
             console.error("Styling error (ignored):", e);
         }
