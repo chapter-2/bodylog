@@ -77,6 +77,65 @@
                 <BulkWeightForm @saved="handleSaved" />
             </div>
 
+            <!-- ─── CARDIO REMINDER SECTION ─── -->
+            <div class="inner border-x border-separator border-t bg-yellow-50 p-6 md:p-8">
+                <div class="flex items-center gap-3 mb-4">
+                    <Activity class="w-6 h-6 text-yellow-600" />
+                    <h3 class="text-xl md:text-2xl font-black uppercase text-foreground-primary">Cardio Checklist</h3>
+                </div>
+                
+                <div class="bg-white border-2 border-yellow-200 p-4 md:p-6 rounded-xl">
+                    <div class="mb-4">
+                        <p class="font-mono text-sm text-foreground-text mb-3">
+                            <strong class="text-foreground-primary">Weekly Target:</strong> Minggu — 45min Total (Treadmill)
+                        </p>
+                        
+                        <div class="space-y-2 bg-primary/5 p-3 rounded border border-primary/20">
+                            <div class="flex items-center gap-2 text-xs font-mono">
+                                <span class="w-16 text-foreground-text/60">Warm-up:</span>
+                                <span class="font-bold text-foreground-primary">5min</span>
+                                <span class="text-foreground-text/60">→</span>
+                                <span class="px-2 py-0.5 bg-white border border-separator rounded">Speed 4</span>
+                                <span class="px-2 py-0.5 bg-white border border-separator rounded">Incline 0</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs font-mono">
+                                <span class="w-16 text-foreground-text/60">Main Set:</span>
+                                <span class="font-bold text-primary">35min</span>
+                                <span class="text-foreground-text/60">→</span>
+                                <span class="px-2 py-0.5 bg-white border border-primary/30 rounded font-bold">Speed 6</span>
+                                <span class="px-2 py-0.5 bg-white border border-primary/30 rounded font-bold">Incline 8-10</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs font-mono">
+                                <span class="w-16 text-foreground-text/60">Cool Down:</span>
+                                <span class="font-bold text-foreground-primary">5min</span>
+                                <span class="text-foreground-text/60">→</span>
+                                <span class="px-2 py-0.5 bg-white border border-separator rounded">Speed 4</span>
+                                <span class="px-2 py-0.5 bg-white border border-separator rounded">Incline 0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2 mb-4">
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input v-model="cardioChecked" type="checkbox" class="peer hidden" />
+                            <div class="w-6 h-6 border-2 border-separator rounded flex items-center justify-center transition-colors peer-checked:bg-green-500 peer-checked:border-green-500">
+                                <Check class="w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity" stroke-width="3" />
+                            </div>
+                            <span class="font-mono text-sm text-foreground-primary group-hover:text-primary transition-colors">
+                                Week {{ currentWeekNumber }} Cardio Done
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <div class="pt-3 border-t border-separator">
+                        <p class="text-xs text-foreground-text/60 italic flex items-start gap-2">
+                            <span class="shrink-0"><BellRing class="w-4 h-4" /></span>
+                            <span>Ini cuma reminder visual. Nggak di-save — centang buat peace of mind aja. Reset tiap page refresh.</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <div class="inner border-x bg-[#fcfbf7] border-t border-separator">
                 <div class="grid grid-cols-3 divide-x divide-separator border-b border-separator">
                     <div class="p-8 text-center">
@@ -131,12 +190,13 @@
 </template>
 
 <script setup lang="ts">
-import { Eye } from "lucide-vue-next";
+import { Eye, Activity, Check, BellRing } from "lucide-vue-next";
 
 const { secureFetch, checkAuth, isAuthenticated } = useAuth();
 
 const isLoading = ref(true);
 const weightData = ref<any[]>([]);
+const cardioChecked = ref(false);
 
 const currentWeight = computed(() => {
     if (weightData.value.length <= 1) return 0;
@@ -153,6 +213,12 @@ const totalGained = computed(() => {
     const start = parseFloat(weightData.value[1]?.[2]) || 0;
     const current = parseFloat(currentWeight.value) || 0;
     return (current - start).toFixed(1);
+});
+
+const currentWeekNumber = computed(() => {
+    if (weightData.value.length <= 1) return 1;
+    const lastEntry = weightData.value[weightData.value.length - 1];
+    return lastEntry[0] || 1;
 });
 
 async function loadWeightData() {
