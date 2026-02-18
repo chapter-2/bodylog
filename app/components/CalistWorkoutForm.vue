@@ -7,7 +7,18 @@
                 <h2 class="text-4xl md:text-5xl font-black uppercase mt-1">
                     {{ dayName }}
                 </h2>
-                <p class="font-mono text-sm text-foreground-text mt-2">Focus: {{ dayFocus }}</p>
+                <div class="flex items-center gap-2 mt-2">
+                    <p class="font-mono text-sm text-foreground-text">Focus: {{ dayFocus }}</p>
+
+                    <button
+                        type="button"
+                        @click="showRules = true"
+                        class="text-xs font-bold bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-foreground-text flex items-center gap-1 transition-colors"
+                    >
+                        <Info class="w-3 h-3" />
+                        <span>LOGGING RULES</span>
+                    </button>
+                </div>
             </div>
 
             <div v-if="lastSaved" class="px-4 py-2 border border-separator rounded-full bg-background flex items-center gap-2">
@@ -77,6 +88,29 @@
                             </span>
                         </div>
 
+                        <!-- Substitution radio buttons — only shown if exercise has subs -->
+                        <div v-if="exercise.subs" class="flex flex-wrap gap-2 mt-2">
+                            <label
+                                v-for="sub in exercise.subs"
+                                :key="sub.value"
+                                class="flex items-center gap-2 cursor-pointer group/sub"
+                            >
+                                <input
+                                    type="radio"
+                                    :name="`sub-${exIdx}`"
+                                    :value="sub.value"
+                                    v-model="exercise.selectedSub"
+                                    class="peer hidden"
+                                />
+                                <span class="w-4 h-4 border-2 border-separator rounded-full flex items-center justify-center transition-colors peer-checked:border-primary">
+                                    <span class="w-2 h-2 bg-primary rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></span>
+                                </span>
+                                <span class="font-mono text-sm text-foreground-text group-hover/sub:text-primary peer-checked:text-primary peer-checked:font-bold transition-colors">
+                                    {{ sub.label }}
+                                </span>
+                            </label>
+                        </div>
+
                         <button
                             type="button"
                             @click="toggleNote(exIdx)"
@@ -84,7 +118,7 @@
                         >
                             <MessageSquare class="w-3 h-3" />
                             <span v-if="exercise.note" class="text-primary font-bold">Edit Note</span>
-                            <span v-else>Add Note (e.g. form cues, pain)</span>
+                            <span v-else>Add Note (e.g. kondisi, form cues)</span>
                         </button>
 
                         <div v-if="exercise.showNote || exercise.note" class="mt-2">
@@ -101,9 +135,8 @@
                         <span class="font-mono text-xs border border-separator px-2 py-1 rounded bg-white whitespace-nowrap">
                             {{ exercise.sets.length }} SETS
                         </span>
-                        <a
-                        
-                            :href="`https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + ' tutorial form calisthenics')}`"
+                        <a 
+                            :href="`https://www.youtube.com/results?search_query=${encodeURIComponent(effectiveName(exercise) + ' tutorial form calisthenics')}`"
                             target="_blank"
                             class="flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-600 border border-red-100 rounded hover:bg-red-600 hover:text-white hover:border-red-600 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                         >
@@ -117,10 +150,13 @@
                 <div v-if="lastWeekData[exIdx]" class="mb-4 p-3 bg-background rounded border border-separator">
                     <span class="font-mono text-xs uppercase tracking-wider text-foreground-text opacity-70">
                         Last Week (W{{ week - 1 }}):
+                        <span v-if="lastWeekData[exIdx].savedName && lastWeekData[exIdx].savedName !== effectiveName(exercise)" class="text-primary ml-1">
+                            [{{ lastWeekData[exIdx].savedName }}]
+                        </span>
                     </span>
                     <div class="flex gap-2 mt-1 flex-wrap">
                         <span
-                            v-for="(set, idx) in lastWeekData[exIdx]"
+                            v-for="(set, idx) in lastWeekData[exIdx].sets"
                             :key="idx"
                             class="font-mono text-xs bg-white px-2 py-1 rounded border border-separator"
                         >
@@ -181,21 +217,70 @@
                 </div>
             </div>
         </form>
+
+        <!-- ─── LOGGING RULES MODAL ─── -->
+        <transition name="fade">
+            <div
+                v-if="showRules"
+                class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                @click.self="showRules = false"
+            >
+                <div class="w-full max-w-sm bg-white border-2 border-foreground-primary p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative animate-bounce-in">
+                    <button @click="showRules = false" class="absolute top-4 right-4 text-foreground-text hover:text-red-500">
+                        <X class="w-6 h-6" />
+                    </button>
+
+                    <h3 class="text-xl font-black uppercase mb-4 border-b-2 border-primary w-fit">Logging Rules</h3>
+
+                    <div class="space-y-4 font-mono text-sm">
+                        <div class="bg-blue-50 p-3 rounded border border-blue-100">
+                            <div class="font-bold text-blue-800 mb-1">REPS Exercises</div>
+                            <p>Catat jumlah <strong>full range of motion reps</strong>.</p>
+                            <p class="text-xs text-blue-600 mt-1">Ex: Pull-up 6 reps → Tulis <strong>6</strong>. Jangan hitung partial rep.</p>
+                        </div>
+
+                        <div class="bg-orange-50 p-3 rounded border border-orange-100">
+                            <div class="font-bold text-orange-800 mb-1">HOLD Exercises</div>
+                            <p>Catat <strong>detik hold tanpa putus</strong>.</p>
+                            <p class="text-xs text-orange-600 mt-1">Ex: Planche Lean 12 detik lalu form break → Tulis <strong>12</strong>.</p>
+                        </div>
+
+                        <div class="bg-yellow-50 p-3 rounded border border-yellow-100">
+                            <div class="font-bold text-yellow-800 mb-1">Substitusi Alat</div>
+                            <p>Pilih versi yang lo pakai dari <strong>radio button</strong> di bawah nama exercise.</p>
+                            <p class="text-xs text-yellow-600 mt-1">Data tersimpan dengan nama versi yang dipilih — AI Coach tahu bedanya.</p>
+                        </div>
+                    </div>
+
+                    <button @click="showRules = false" class="w-full mt-6 py-3 bg-foreground-primary text-white font-bold uppercase rounded hover:bg-primary transition-colors">
+                        Got it
+                    </button>
+                </div>
+            </div>
+        </transition>
+
     </div>
 </template>
 
 <script setup lang="ts">
-import { BedDouble, Check, MessageSquare, ChevronDown, Target, Youtube } from "lucide-vue-next";
+import { BedDouble, Check, MessageSquare, ChevronDown, Target, Youtube, Info, X } from "lucide-vue-next";
 
 // ─── UI Types ───
 interface UISet {
     value: number;
 }
 
+interface SubOption {
+    label: string;
+    value: string;
+}
+
 interface UIExercise {
     name: string;
     type: 'reps' | 'hold';
     sets: UISet[];
+    subs?: SubOption[];
+    selectedSub?: string;
     note?: string;
     showNote?: boolean;
 }
@@ -211,15 +296,17 @@ const completed = ref(false);
 const saving = ref(false);
 const lastSaved = ref("");
 const saveError = ref("");
-const lastWeekData = ref<Record<number, string[]>>({});
+const lastWeekData = ref<Record<number, { sets: string[]; savedName: string }>>({});
 const sessionNote = ref("");
 const showSessionNote = ref(false);
+const showRules = ref(false);
 
 // ─── Program Templates ───
 interface ExerciseDef {
     name: string;
     type: 'reps' | 'hold';
     setCount: number;
+    subs?: SubOption[];
 }
 
 const programTemplates: Record<string, { name: string; focus: string; exercises: ExerciseDef[] }> = {
@@ -229,7 +316,15 @@ const programTemplates: Record<string, { name: string; focus: string; exercises:
         exercises: [
             { name: "Scapular Pull-up", type: "reps", setCount: 3 },
             { name: "Wide Grip Pull-up", type: "reps", setCount: 4 },
-            { name: "Band Face Pull", type: "reps", setCount: 3 },
+            {
+                name: "Band Face Pull",
+                type: "reps",
+                setCount: 3,
+                subs: [
+                    { label: "Band Face Pull", value: "Band Face Pull" },
+                    { label: "Scapular Pull-up (no band)", value: "Scapular Pull-up (sub)" },
+                ],
+            },
             { name: "Hollow Body Hold", type: "hold", setCount: 3 },
         ],
     },
@@ -237,20 +332,68 @@ const programTemplates: Record<string, { name: string; focus: string; exercises:
         name: "RABU",
         focus: "Push + Planche Foundation",
         exercises: [
-            { name: "Planche Lean", type: "hold", setCount: 4 },
-            { name: "Push-up (Parallettes)", type: "reps", setCount: 4 },
+            {
+                name: "Planche Lean",
+                type: "hold",
+                setCount: 4,
+                subs: [
+                    { label: "Parallettes", value: "Planche Lean (Parallettes)" },
+                    { label: "Floor (fist)", value: "Planche Lean (Floor)" },
+                ],
+            },
+            {
+                name: "Push-up (Parallettes)",
+                type: "reps",
+                setCount: 4,
+                subs: [
+                    { label: "Parallettes", value: "Push-up (Parallettes)" },
+                    { label: "Floor Push-up", value: "Push-up (Floor)" },
+                ],
+            },
             { name: "Pike Push-up", type: "reps", setCount: 3 },
-            { name: "Band Lateral Raise", type: "reps", setCount: 4 },
+            {
+                name: "Band Lateral Raise",
+                type: "reps",
+                setCount: 4,
+                subs: [
+                    { label: "Band Lateral Raise", value: "Band Lateral Raise" },
+                    { label: "Pike Push-up +1 set (no band)", value: "Pike Push-up (sub lateral)" },
+                ],
+            },
         ],
     },
     friday: {
         name: "JUMAT",
         focus: "Pull 2 + Planche Skill",
         exercises: [
-            { name: "Tuck Planche Hold", type: "hold", setCount: 4 },
+            {
+                name: "Tuck Planche Hold",
+                type: "hold",
+                setCount: 4,
+                subs: [
+                    { label: "Parallettes", value: "Tuck Planche Hold (Parallettes)" },
+                    { label: "Floor (fist)", value: "Tuck Planche Hold (Floor)" },
+                ],
+            },
             { name: "Chin-up", type: "reps", setCount: 4 },
-            { name: "L-sit", type: "hold", setCount: 3 },
-            { name: "Band Hammer Curl", type: "reps", setCount: 3 },
+            {
+                name: "L-sit",
+                type: "hold",
+                setCount: 3,
+                subs: [
+                    { label: "Parallettes", value: "L-sit (Parallettes)" },
+                    { label: "Floor (tuck)", value: "L-sit (Floor tuck)" },
+                ],
+            },
+            {
+                name: "Band Hammer Curl",
+                type: "reps",
+                setCount: 3,
+                subs: [
+                    { label: "Band Hammer Curl", value: "Band Hammer Curl" },
+                    { label: "Neutral Grip Chin-up Negatives (no band)", value: "Chin-up Negatives (sub)" },
+                ],
+            },
         ],
     },
     saturday: {
@@ -260,7 +403,15 @@ const programTemplates: Record<string, { name: string; focus: string; exercises:
             { name: "Pistol Squat", type: "reps", setCount: 4 },
             { name: "Nordic Curl", type: "reps", setCount: 3 },
             { name: "Single Leg Calf Raise", type: "reps", setCount: 3 },
-            { name: "Planche Lean", type: "hold", setCount: 3 },
+            {
+                name: "Planche Lean",
+                type: "hold",
+                setCount: 3,
+                subs: [
+                    { label: "Parallettes", value: "Planche Lean (Parallettes)" },
+                    { label: "Floor (fist)", value: "Planche Lean (Floor)" },
+                ],
+            },
         ],
     },
     sunday: {
@@ -268,8 +419,24 @@ const programTemplates: Record<string, { name: string; focus: string; exercises:
         focus: "Shoulders + Arms + Wrist Rehab",
         exercises: [
             { name: "Pike Push-up (Feet Elevated)", type: "reps", setCount: 4 },
-            { name: "Band Lateral Raise", type: "reps", setCount: 4 },
-            { name: "Band Curl", type: "reps", setCount: 3 },
+            {
+                name: "Band Lateral Raise",
+                type: "reps",
+                setCount: 4,
+                subs: [
+                    { label: "Band Lateral Raise", value: "Band Lateral Raise" },
+                    { label: "Pike Push-up +1 set (no band)", value: "Pike Push-up (sub lateral)" },
+                ],
+            },
+            {
+                name: "Band Curl",
+                type: "reps",
+                setCount: 3,
+                subs: [
+                    { label: "Band Curl", value: "Band Curl" },
+                    { label: "Chin-up Negatives (no band)", value: "Chin-up Negatives (sub curl)" },
+                ],
+            },
             { name: "Wrist Conditioning", type: "hold", setCount: 3 },
         ],
     },
@@ -280,6 +447,20 @@ const dayName = computed(() => programTemplates[props.day]?.name || "REST DAY");
 const dayFocus = computed(() => programTemplates[props.day]?.focus || "Recover");
 
 // ─── Helpers ───
+
+// Returns the name to save to sheet — selectedSub if chosen, else exercise name
+function effectiveName(ex: UIExercise): string {
+    return ex.selectedSub || ex.name;
+}
+
+// Returns all possible saved names for this exercise (for last-week lookup)
+function allPossibleNames(ex: UIExercise | ExerciseDef): string[] {
+    const base = ex.name;
+    const subs = (ex as any).subs as SubOption[] | undefined;
+    if (!subs) return [base];
+    return [base, ...subs.map((s: SubOption) => s.value)];
+}
+
 function formatSetValue(ex: UIExercise, val: number): string {
     if (!val || val <= 0) return "-";
     return ex.type === 'hold' ? `${val}s` : `${val} reps`;
@@ -305,6 +486,8 @@ function initializeExercises() {
         name: def.name,
         type: def.type,
         sets: Array(def.setCount).fill(null).map(() => ({ value: 0 })),
+        subs: def.subs,
+        selectedSub: def.subs ? def.subs[0].value : undefined,
         note: "",
         showNote: false,
     }));
@@ -320,13 +503,20 @@ async function loadLastWeekData() {
 
         if (lastWeekRows.length > 0) {
             const template = programTemplates[props.day];
-            const dataMap: Record<number, string[]> = {};
+            const dataMap: Record<number, { sets: string[]; savedName: string }> = {};
+
             template?.exercises.forEach((def, idx) => {
-                const exerciseRow = lastWeekRows.find((row: any) => row[4] === def.name);
+                const possibleNames = allPossibleNames(def);
+                let exerciseRow: any = null;
+                for (const n of possibleNames) {
+                    exerciseRow = lastWeekRows.find((row: any) => row[4] === n);
+                    if (exerciseRow) break;
+                }
+
                 if (exerciseRow) {
                     const sets = [exerciseRow[5], exerciseRow[6], exerciseRow[7], exerciseRow[8]]
                         .filter((s: any) => s && s !== "-" && s !== undefined);
-                    dataMap[idx] = sets;
+                    dataMap[idx] = { sets, savedName: exerciseRow[4] };
                 }
             });
             lastWeekData.value = dataMap;
@@ -351,12 +541,25 @@ async function loadCurrentSession() {
             }
 
             exercises.value.forEach((exercise) => {
-                const savedRow = currentRows.find((row: any) => row[4] === exercise.name);
+                const possibleNames = allPossibleNames(exercise);
+                let savedRow: any = null;
+                for (const n of possibleNames) {
+                    savedRow = currentRows.find((row: any) => row[4] === n);
+                    if (savedRow) break;
+                }
+
                 if (savedRow) {
+                    // Restore radio selection to whichever sub was saved
+                    if (exercise.subs) {
+                        const matchedSub = exercise.subs.find(s => s.value === savedRow[4]);
+                        if (matchedSub) exercise.selectedSub = matchedSub.value;
+                    }
+
                     exercise.sets.forEach((set, idx) => {
                         const stored = savedRow[5 + idx];
                         set.value = parseSetValue(stored);
                     });
+
                     if (savedRow[10]) {
                         exercise.note = savedRow[10];
                     }
@@ -386,7 +589,7 @@ async function saveWorkout() {
         const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 
         const exercisePayload = exercises.value.map(ex => ({
-            name: ex.name,
+            name: effectiveName(ex),
             sets: ex.sets.map(s => formatSetValue(ex, s.value)),
             note: ex.note || "",
         }));
@@ -437,3 +640,14 @@ watch(() => props.week, () => {
     }
 });
 </script>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+@keyframes bounceIn {
+    0% { transform: scale(0.9); opacity: 0; }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+.animate-bounce-in { animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+</style>
