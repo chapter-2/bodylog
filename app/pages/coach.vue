@@ -20,7 +20,6 @@
                     Export your raw data and let AI analyze your progress.
                 </p>
 
-                <!-- Mode indicator -->
                 <div class="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-full">
                     <Dumbbell v-if="isGym" class="w-3 h-3 text-primary" />
                     <Activity v-else class="w-3 h-3 text-primary" />
@@ -195,12 +194,11 @@ function csvField(val: string): string {
     return val;
 }
 
-// ─── BUILD TRAINING CONTEXT BLOCK (shared for gym & calist) ───
-function buildContextBlock(gymOrCalistData: any[]): string {
+function buildContextBlock(data: any[]): string {
     const contextLines: string[] = [];
     const sessionNotesMap = new Map<string, string>();
 
-    gymOrCalistData.forEach((row: any[]) => {
+    data.forEach((row: any[]) => {
         if (row[0] === "Week") return;
         const week = row[0];
         const day = row[1];
@@ -228,10 +226,8 @@ function buildContextBlock(gymOrCalistData: any[]): string {
         : "";
 }
 
-// ─── GYM PROMPT ───
-function buildGymPrompt(gymData: any[], bulkData: any[], height: number): string {
+function buildGymPrompt(gymData: any[], height: number): string {
     const contextBlock = buildContextBlock(gymData);
-
     return `Act as an elite Personal Trainer and Nutritionist.
 I have attached a CSV file containing my "Gym Logs" and "Body Weight Logs" (Bulk progress).
 
@@ -249,36 +245,33 @@ Please analyze my data and provide a concise report with:
 Be brutal, direct, and data-driven. Don't give generic advice.`;
 }
 
-// ─── CALIST PROMPT ───
-function buildCalistPrompt(calistData: any[], bulkData: any[], height: number): string {
+function buildCalistPrompt(calistData: any[], height: number): string {
     const contextBlock = buildContextBlock(calistData);
-
     return `Act as an elite Calisthenics Coach and Nutritionist specializing in skill progression.
-I have attached a CSV file containing my Calisthenics training logs and Body Weight Logs during Ramadan.
+I have attached a CSV file containing my Calisthenics training logs and Body Weight Logs.
 
 **My Stats:**
 - Height: ${height} cm
 ${contextBlock}
 **Program Context:**
-- Ramadan home program, training sore sebelum buka puasa
+- Home calisthenics program, training sore hari
 - Equipment: Pull-up bar, low parallettes, resistance bands
 - Primary Goal: Planche foundation + maintain back width & shoulder development
-- Secondary Goal: Maintain bodyweight / minimize muscle loss during fasting
+- Secondary Goal: Maintain bodyweight / minimize muscle loss
 - Rest days: Tuesday & Thursday
 
-**IMPORTANT:** Before analyzing, read the Training Context & Notes above. Reduced reps or holds may be due to fasting energy or wrist condition — understand WHY before judging.
+**IMPORTANT:** Before analyzing, read the Training Context & Notes above. Reduced reps or holds may be due to energy levels or wrist condition — understand WHY before judging.
 
 Please analyze my data and provide a concise report with:
 1. **Planche Progression Check**: How is my Planche Lean hold time and Tuck Planche Hold progressing week over week? Am I on track for the 4-week milestone (W4 target: Tuck hold 15s solid)?
 2. **Pull Strength Analysis**: Wide Grip Pull-up and Chin-up volume trend. Am I progressing or stalling?
 3. **Push & Shoulder**: Pike Push-up reps and Band Lateral Raise — are these moving?
-4. **Ramadan Body Composition**: Calculate BMI from latest weight and height. Am I maintaining weight or losing too fast during fasting? (Acceptable: max -0.5kg/week)
+4. **Body Composition**: Calculate BMI from latest weight and height. Am I maintaining weight or losing too fast? (Acceptable: max -0.5kg/week)
 5. **Action Plan**: Give me 3 specific, concrete things to focus on next week — no generic advice.
 
 Be brutal, direct, and data-driven.`;
 }
 
-// ─── BUILD CSV (gym mode) ───
 function buildGymCsv(gymData: any[], bulkData: any[]): string {
     let csv = "TYPE,WEEK,DAY,DATE,EXERCISE,SET1,SET2,SET3,SET4,COMPLETED,EXERCISE_NOTE,SESSION_NOTE\n";
 
@@ -307,7 +300,6 @@ function buildGymCsv(gymData: any[], bulkData: any[]): string {
     return csv;
 }
 
-// ─── BUILD CSV (calist mode) ───
 function buildCalistCsv(calistData: any[], bulkData: any[]): string {
     let csv = "TYPE,WEEK,DAY,DATE,EXERCISE,SET1,SET2,SET3,SET4,COMPLETED,EXERCISE_NOTE,SESSION_NOTE\n";
 
@@ -360,10 +352,9 @@ async function handleSummonTrainer() {
             : buildCalistCsv(mainData, bulkData);
 
         const AI_PROMPT = isGym.value
-            ? buildGymPrompt(mainData, bulkData, userHeight.value)
-            : buildCalistPrompt(mainData, bulkData, userHeight.value);
+            ? buildGymPrompt(mainData, userHeight.value)
+            : buildCalistPrompt(mainData, userHeight.value);
 
-        // ─── Download CSV ───
         const filename = isGym.value
             ? `bodylog_gym_export_${new Date().toISOString().slice(0, 10)}.csv`
             : `bodylog_calist_export_${new Date().toISOString().slice(0, 10)}.csv`;
@@ -378,7 +369,6 @@ async function handleSummonTrainer() {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
 
-        // ─── Copy prompt ───
         await navigator.clipboard.writeText(AI_PROMPT.trim());
 
         loading.value = false;

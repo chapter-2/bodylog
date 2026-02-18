@@ -60,7 +60,7 @@
                 </div>
 
                 <span class="font-handwriting text-xl text-primary mb-2 block rotate-1">
-                    Ramadan Strong!
+                    Time to grind!
                 </span>
                 <h1 class="text-5xl md:text-7xl font-black uppercase text-foreground-primary mb-4">
                     Calist Log
@@ -126,7 +126,7 @@
 
                     <div class="flex flex-col items-center">
                         <span class="font-black text-2xl leading-none">WEEK {{ currentWeek }}</span>
-                        <span class="text-[10px] font-mono text-foreground-text opacity-60 tracking-widest uppercase">Ramadan Program</span>
+                        <span class="text-[10px] font-mono text-foreground-text opacity-60 tracking-widest uppercase">Calist Program</span>
                     </div>
 
                     <button
@@ -259,7 +259,6 @@ import {
     Eye,
 } from "lucide-vue-next";
 
-// Ramadan program starts Feb 19 2026
 const CALIST_START_DATE = new Date("2026-02-19");
 
 const { isAuthenticated, checkAuth, secureFetch } = useAuth();
@@ -364,7 +363,6 @@ async function loadHistory() {
 
 function initializeDay() {
     currentWeek.value = calculatedWeek.value;
-    // Select today if it's a workout day, otherwise first incomplete workout day
     if (workoutDays.includes(todayDay.value) && !isDayCompleted(todayDay.value)) {
         selectedDay.value = todayDay.value;
         return;

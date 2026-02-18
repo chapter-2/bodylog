@@ -237,11 +237,8 @@
 
                         <button
                             @click="selectMode('calist')"
-                            class="p-8 text-left hover:bg-[#fcfbf7] transition-colors group flex flex-col gap-4 relative"
+                            class="p-8 text-left hover:bg-[#fcfbf7] transition-colors group flex flex-col gap-4"
                         >
-                            <span class="absolute top-3 right-3 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-mono font-bold rounded uppercase tracking-wider">
-                                Ramadan
-                            </span>
                             <Activity class="w-10 h-10 text-primary group-hover:scale-110 transition-transform" :stroke-width="1.5" />
                             <div>
                                 <h4 class="text-2xl font-black uppercase text-foreground-primary group-hover:text-primary transition-colors">
@@ -326,7 +323,6 @@ function confirmLogout() {
 function selectMode(newMode: 'gym' | 'calist') {
     setMode(newMode);
     showModeModal.value = false;
-    // Redirect to the appropriate log page after mode selection
     if (newMode === 'gym') {
         navigateTo('/gym');
     } else {
@@ -336,7 +332,6 @@ function selectMode(newMode: 'gym' | 'calist') {
 
 onMounted(() => {
     checkAuth();
-    // Show mode selection if no mode has been chosen yet
     if (!hasMode.value) {
         showModeModal.value = true;
     }
