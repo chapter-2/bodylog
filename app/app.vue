@@ -20,49 +20,55 @@
                         to="/"
                         class="flex items-center gap-1 text-sm font-bold uppercase tracking-wide hover:text-primary transition-colors"
                     >
-                        <span class="font-mono text-primary text-[10px] -mt-3"
-                            >00</span
-                        >
+                        <span class="font-mono text-primary text-[10px] -mt-3">00</span>
                         Home
                     </NuxtLink>
                     <NuxtLink
+                        v-if="isGym"
                         to="/gym"
                         class="flex items-center gap-1 text-sm font-bold uppercase tracking-wide hover:text-primary transition-colors"
                     >
-                        <span class="font-mono text-primary text-[10px] -mt-3"
-                            >01</span
-                        >
+                        <span class="font-mono text-primary text-[10px] -mt-3">01</span>
                         Gym Log
+                    </NuxtLink>
+                    <NuxtLink
+                        v-else
+                        to="/calist"
+                        class="flex items-center gap-1 text-sm font-bold uppercase tracking-wide hover:text-primary transition-colors"
+                    >
+                        <span class="font-mono text-primary text-[10px] -mt-3">01</span>
+                        Calist Log
                     </NuxtLink>
                     <NuxtLink
                         to="/bulk"
                         class="flex items-center gap-1 text-sm font-bold uppercase tracking-wide hover:text-primary transition-colors"
                     >
-                        <span class="font-mono text-primary text-[10px] -mt-3"
-                            >02</span
-                        >
+                        <span class="font-mono text-primary text-[10px] -mt-3">02</span>
                         Weigh In
                     </NuxtLink>
                     <NuxtLink
                         to="/coach"
                         class="flex items-center gap-1 text-sm font-bold uppercase tracking-wide hover:text-primary transition-colors text-primary"
                     >
-                        <span class="font-mono text-primary text-[10px] -mt-3"
-                            >03</span
-                        >
+                        <span class="font-mono text-primary text-[10px] -mt-3">03</span>
                         AI Coach
                     </NuxtLink>
                 </div>
 
                 <div class="flex items-center gap-4">
-                    <div class="hidden md:block">
-                        <div
-                            v-if="isAuthenticated"
-                            class="flex items-center gap-3"
+                    <div class="hidden md:flex items-center gap-3">
+                        <button
+                            @click="showModeModal = true"
+                            class="flex items-center gap-1.5 px-3 py-1.5 border border-separator rounded-full text-xs font-mono font-bold uppercase tracking-wider hover:border-primary hover:text-primary transition-colors"
+                            :title="isCalist ? 'Mode: Calisthenics — klik untuk ganti' : 'Mode: Gym — klik untuk ganti'"
                         >
-                            <span
-                                class="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-                            ></span>
+                            <Dumbbell v-if="isGym" class="w-3 h-3" />
+                            <Activity v-else class="w-3 h-3" />
+                            {{ isGym ? 'GYM' : 'CALIST' }}
+                        </button>
+
+                        <div v-if="isAuthenticated" class="flex items-center gap-3">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                             <button
                                 @click="handleLogoutClick"
                                 class="text-xs font-mono hover:text-red-500 uppercase tracking-wider"
@@ -100,32 +106,33 @@
                             @click="isMenuOpen = false"
                             class="text-4xl font-black uppercase hover:text-primary transition-colors block"
                         >
-                            <span
-                                class="text-primary text-sm font-mono mb-1 block"
-                                >00</span
-                            >
+                            <span class="text-primary text-sm font-mono mb-1 block">00</span>
                             HOME
                         </NuxtLink>
                         <NuxtLink
+                            v-if="isGym"
                             to="/gym"
                             @click="isMenuOpen = false"
                             class="text-4xl font-black uppercase hover:text-primary transition-colors block"
                         >
-                            <span
-                                class="text-primary text-sm font-mono mb-1 block"
-                                >01</span
-                            >
+                            <span class="text-primary text-sm font-mono mb-1 block">01</span>
                             GYM LOG
+                        </NuxtLink>
+                        <NuxtLink
+                            v-else
+                            to="/calist"
+                            @click="isMenuOpen = false"
+                            class="text-4xl font-black uppercase hover:text-primary transition-colors block"
+                        >
+                            <span class="text-primary text-sm font-mono mb-1 block">01</span>
+                            CALIST LOG
                         </NuxtLink>
                         <NuxtLink
                             to="/bulk"
                             @click="isMenuOpen = false"
                             class="text-4xl font-black uppercase hover:text-primary transition-colors block"
                         >
-                            <span
-                                class="text-primary text-sm font-mono mb-1 block"
-                                >02</span
-                            >
+                            <span class="text-primary text-sm font-mono mb-1 block">02</span>
                             WEIGH IN
                         </NuxtLink>
                         <NuxtLink
@@ -133,14 +140,26 @@
                             @click="isMenuOpen = false"
                             class="text-4xl font-black uppercase hover:text-primary transition-colors block text-primary"
                         >
-                            <span
-                                class="text-primary text-sm font-mono mb-1 block"
-                                >03</span
-                            >
+                            <span class="text-primary text-sm font-mono mb-1 block">03</span>
                             AI COACH
                         </NuxtLink>
 
-                        <div class="h-px bg-separator my-4"></div>
+                        <div class="h-px bg-separator my-2"></div>
+
+                        <button
+                            @click="isMenuOpen = false; showModeModal = true"
+                            class="text-left"
+                        >
+                            <span class="text-separator text-sm font-mono mb-1 block uppercase tracking-widest">Current Mode</span>
+                            <span class="text-4xl font-black uppercase hover:text-primary transition-colors flex items-center gap-3">
+                                <Dumbbell v-if="isGym" class="w-8 h-8" />
+                                <Activity v-else class="w-8 h-8" />
+                                {{ isGym ? 'GYM' : 'CALIST' }}
+                            </span>
+                            <span class="text-xs font-mono text-primary mt-1 block">Tap to switch →</span>
+                        </button>
+
+                        <div class="h-px bg-separator my-2"></div>
 
                         <div v-if="isAuthenticated">
                             <button
@@ -174,14 +193,74 @@
                 <p class="font-handwriting text-2xl">
                     Consistency beats intensity.
                 </p>
-                <p
-                    class="text-xs font-mono opacity-60 uppercase tracking-widest"
-                >
+                <p class="text-xs font-mono opacity-60 uppercase tracking-widest">
                     © 2026 BodyLog
                 </p>
             </div>
         </footer>
 
+        <!-- ─── MODE SELECTION MODAL ─── -->
+        <transition name="fade">
+            <div
+                v-if="showModeModal"
+                class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            >
+                <div class="w-full max-w-lg bg-white border-2 border-foreground-primary shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative animate-bounce-in">
+                    <div class="p-8 border-b border-separator">
+                        <span class="font-handwriting text-primary text-xl block mb-1">Selamat datang!</span>
+                        <h3 class="text-4xl font-black uppercase text-foreground-primary">
+                            Pilih Mode Latihan
+                        </h3>
+                        <p class="font-mono text-xs text-foreground-text mt-2 opacity-70">
+                            Bisa diganti kapan saja lewat tombol di navbar.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 divide-x divide-separator">
+                        <button
+                            @click="selectMode('gym')"
+                            class="p-8 text-left hover:bg-[#fcfbf7] transition-colors group flex flex-col gap-4"
+                        >
+                            <Dumbbell class="w-10 h-10 text-primary group-hover:-rotate-12 transition-transform" :stroke-width="1.5" />
+                            <div>
+                                <h4 class="text-2xl font-black uppercase text-foreground-primary group-hover:text-primary transition-colors">
+                                    GYM
+                                </h4>
+                                <p class="font-mono text-xs text-foreground-text mt-2 leading-relaxed opacity-80">
+                                    Barbell, mesin, & dumbbell. Program 12 minggu dengan progressive overload.
+                                </p>
+                            </div>
+                            <span class="font-mono text-xs text-primary font-bold uppercase tracking-widest mt-auto">
+                                Pilih →
+                            </span>
+                        </button>
+
+                        <button
+                            @click="selectMode('calist')"
+                            class="p-8 text-left hover:bg-[#fcfbf7] transition-colors group flex flex-col gap-4 relative"
+                        >
+                            <span class="absolute top-3 right-3 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-mono font-bold rounded uppercase tracking-wider">
+                                Ramadan
+                            </span>
+                            <Activity class="w-10 h-10 text-primary group-hover:scale-110 transition-transform" :stroke-width="1.5" />
+                            <div>
+                                <h4 class="text-2xl font-black uppercase text-foreground-primary group-hover:text-primary transition-colors">
+                                    CALIST
+                                </h4>
+                                <p class="font-mono text-xs text-foreground-text mt-2 leading-relaxed opacity-80">
+                                    Pull-up bar, parallettes, & band. Program rumahan menuju planche.
+                                </p>
+                            </div>
+                            <span class="font-mono text-xs text-primary font-bold uppercase tracking-widest mt-auto">
+                                Pilih →
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- ─── LOGOUT MODAL ─── -->
         <transition name="fade">
             <div
                 v-if="showLogoutModal"
@@ -225,11 +304,13 @@
 </template>
 
 <script setup lang="ts">
-import { Menu, X, LogOut } from "lucide-vue-next";
+import { Menu, X, LogOut, Dumbbell, Activity } from "lucide-vue-next";
 const { isAuthenticated, logout, checkAuth } = useAuth();
+const { isGym, isCalist, hasMode, setMode } = useMode();
 
 const isMenuOpen = ref(false);
 const showLogoutModal = ref(false);
+const showModeModal = ref(false);
 
 function handleLogoutClick() {
     isMenuOpen.value = false;
@@ -242,14 +323,27 @@ function confirmLogout() {
     navigateTo("/");
 }
 
-// Check auth on mount
+function selectMode(newMode: 'gym' | 'calist') {
+    setMode(newMode);
+    showModeModal.value = false;
+    // Redirect to the appropriate log page after mode selection
+    if (newMode === 'gym') {
+        navigateTo('/gym');
+    } else {
+        navigateTo('/calist');
+    }
+}
+
 onMounted(() => {
     checkAuth();
+    // Show mode selection if no mode has been chosen yet
+    if (!hasMode.value) {
+        showModeModal.value = true;
+    }
 });
 </script>
 
 <style scoped>
-/* Transition */
 .menu-enter-active,
 .menu-leave-active {
     transition: all 0.3s ease-in-out;

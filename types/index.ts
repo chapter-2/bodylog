@@ -4,10 +4,10 @@ export interface WorkoutSet {
 }
 
 export interface Exercise {
-  name: string;           
-  selectedVariant?: string; 
+  name: string;
+  selectedVariant?: string;
   sets: WorkoutSet[];
-  note?: string;          
+  note?: string;
 }
 
 export interface WorkoutDay {
@@ -17,7 +17,7 @@ export interface WorkoutDay {
   time?: string;
   exercises: Exercise[];
   completed: boolean;
-  sessionNote?: string;   
+  sessionNote?: string;
 }
 
 export interface BulkEntry {
@@ -34,7 +34,7 @@ export interface GymSession {
   time?: string;
   exercises: Exercise[];
   completed: boolean;
-  sessionNote?: string;   
+  sessionNote?: string;
 }
 
 export interface GymProgram {
@@ -43,4 +43,21 @@ export interface GymProgram {
   wednesday: Exercise[];
   friday: Exercise[];
   saturday: Exercise[];
+}
+
+// ─── Calisthenics types ───
+export interface CalistExercisePayload {
+  name: string;
+  sets: string[];
+  note: string;
+}
+
+export interface CalistSession {
+  week: number;
+  day: string;
+  date: string;
+  time?: string;
+  exercises: CalistExercisePayload[];
+  completed: boolean;
+  sessionNote?: string;
 }
