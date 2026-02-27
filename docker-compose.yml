@@ -10,7 +10,7 @@ services:
       - bodylog_data:/data
     environment:
       NODE_ENV: production
-      APP_PASSWORD: ${APP_PASSWORD}
+      NUXT_APP_PASSWORD: ${APP_PASSWORD}
       DB_PATH: /data
 
 volumes:
