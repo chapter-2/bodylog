@@ -1,203 +1,147 @@
 <template>
-    <div>
-        <div class="inner border-b border-separator pb-20 pt-12 relative">
-            <div
-                class="mx-auto flex flex-col justify-center gap-6 lg:max-w-4xl lg:items-center lg:text-center z-10 relative"
-            >
-                <span
-                    class="font-handwriting text-xl text-foreground-text sm:text-2xl"
-                >
-                    12 Weeks. Zero Tolerance.
-                </span>
+    <div class="min-h-screen bg-background relative">
+        <OnboardingTour />
 
-                <h1
-                    class="text-4xl md:text-7xl lg:text-8xl font-black uppercase leading-none text-foreground-primary py-2"
-                >
-                    SHAPED
-                    <span class="text-primary block sm:inline">PROGRAM</span>
-                </h1>
-
-                <p
-                    class="text-balance sm:text-lg lg:text-xl leading-relaxed max-w-2xl mx-auto font-mono opacity-80"
-                >
-                    Log every rep. Track every gram. Create the aesthetic.
-                </p>
-
-                <div class="flex flex-col sm:flex-row gap-4 mt-8">
-                    <NuxtLink
-                        :to="isGym ? '/gym' : '/calist'"
-                        class="btn-pow text-lg px-8"
-                    >
-                        Start Tracking
-                        <span class="group-hover:-rotate-45 transition-transform">→</span>
-                    </NuxtLink>
+        <div class="inner py-10 md:py-20">
+            <div v-if="!hasMode" class="max-w-3xl mx-auto">
+                <div class="text-center mb-12">
+                    <span class="font-handwriting text-2xl text-primary mb-2 block -rotate-2">Step {{ setupStep }} of 3</span>
+                    <h1 class="text-5xl md:text-6xl font-black uppercase text-foreground-primary tracking-tighter leading-none">
+                        BUILD YOUR PROTOCOL
+                    </h1>
                 </div>
-            </div>
 
-            <div
-                class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -z-10 opacity-5 whitespace-nowrap overflow-hidden pointer-events-none select-none"
-            >
-                <span class="text-[20rem] font-black font-sans text-primary">BODYLOG</span>
-            </div>
-        </div>
-
-        <section class="border-b border-separator">
-            <div class="inner border-x border-separator bg-white">
-                <div
-                    class="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-separator"
-                >
-                    <!-- GYM card -->
-                    <NuxtLink
-                        to="/gym"
-                        @click="onClickGym"
-                        class="p-10 group hover:bg-[#fcfbf7] transition-colors block"
-                        :class="isGym ? 'bg-primary/5' : ''"
-                    >
-                        <div class="mb-4 flex justify-between items-start">
-                            <div class="flex flex-col gap-1">
-                                <span class="font-handwriting text-lg text-primary">The Iron Path</span>
-                                <div v-if="isGym" class="flex items-center gap-1.5">
-                                    <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                                    <span class="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">Active Mode</span>
-                                </div>
-                            </div>
-                            <Dumbbell
-                                class="w-12 h-12 text-primary group-hover:rotate-12 transition-transform"
-                                :stroke-width="1.5"
-                            />
+                <div class="bg-white border-2 border-separator p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                    
+                    <div v-if="setupStep === 1" class="animate-bounce-in">
+                        <h2 class="font-mono text-sm uppercase tracking-widest text-foreground-text mb-6">Select Discipline</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <button v-for="m in ['gym', 'calist', 'cardio']" :key="m"
+                                @click="tempMode = m"
+                                :class="['p-6 border-2 text-left transition-all', tempMode === m ? 'border-primary bg-[#fcfbf7] shadow-[4px_4px_0px_0px_#229799] -translate-y-1' : 'border-separator hover:border-foreground-primary']"
+                            >
+                                <h3 class="text-2xl font-black uppercase mb-2">{{ m }}</h3>
+                                <p class="font-mono text-xs opacity-70">
+                                    {{ m === 'gym' ? 'Hypertrophy & Iron' : (m === 'calist' ? 'Bodyweight Mastery' : 'Endurance & Engine') }}
+                                </p>
+                            </button>
                         </div>
-                        <h3 class="text-3xl font-bold mb-6">Gym Training</h3>
-                        <ul class="space-y-4 font-mono text-sm">
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                <span><strong>5 Days / Week</strong> (Mon–Sat)</span>
-                            </li>
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                <span><strong>Back 2x</strong> (Width + Thickness)</span>
-                            </li>
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                <span><strong>Barbell, Dumbbell, Cable</strong></span>
-                            </li>
-                        </ul>
-                        <span class="font-mono text-xs text-primary font-bold uppercase tracking-widest mt-8 block">
-                            {{ isGym ? 'Currently Active →' : 'Switch to Gym →' }}
-                        </span>
-                    </NuxtLink>
-
-                    <!-- CALIST card -->
-                    <NuxtLink
-                        to="/calist"
-                        @click="onClickCalist"
-                        class="p-10 group hover:bg-[#fcfbf7] transition-colors block relative"
-                        :class="isCalist ? 'bg-primary/5' : ''"
-                    >
-                        <div class="mb-4 flex justify-between items-start">
-                            <div class="flex flex-col gap-1">
-                                <span class="font-handwriting text-lg text-primary">The Skill Path</span>
-                                <div v-if="isCalist" class="flex items-center gap-1.5">
-                                    <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                                    <span class="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">Active Mode</span>
-                                </div>
-                            </div>
-                            <Activity
-                                class="w-12 h-12 text-primary group-hover:scale-110 transition-transform"
-                                :stroke-width="1.5"
-                            />
-                        </div>
-                        <h3 class="text-3xl font-bold mb-6">Calisthenics</h3>
-                        <ul class="space-y-4 font-mono text-sm">
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                <span><strong>5 Days / Week</strong> (Mon, Wed, Fri, Sat, Sun)</span>
-                            </li>
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                <span><strong>Planche Progression</strong> (Skill-based)</span>
-                            </li>
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                <span><strong>Pull-up Bar, Parallettes, Band</strong></span>
-                            </li>
-                        </ul>
-                        <span class="font-mono text-xs text-primary font-bold uppercase tracking-widest mt-8 block">
-                            {{ isCalist ? 'Currently Active →' : 'Switch to Calist →' }}
-                        </span>
-                    </NuxtLink>
-                </div>
-            </div>
-        </section>
-
-        <section class="border-b border-separator">
-            <div class="inner border-x border-separator bg-white">
-                <div
-                    class="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-separator"
-                >
-                    <div class="p-10 group hover:bg-[#fcfbf7] transition-colors">
-                        <div class="mb-4 flex justify-between items-start">
-                            <span class="font-handwriting text-lg text-primary">The Law</span>
-                            <Scale class="w-12 h-12 text-primary group-hover:-rotate-12 transition-transform" :stroke-width="1.5" />
-                        </div>
-                        <h3 class="text-3xl font-bold mb-6">Rules</h3>
-                        <ul class="space-y-4 font-mono text-sm">
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-red-500 rounded-full"></span>
-                                <span><strong>Double Progression</strong> (Reps first)</span>
-                            </li>
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-red-500 rounded-full"></span>
-                                <span><strong>Track Everything</strong> (No guessing)</span>
-                            </li>
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-red-500 rounded-full"></span>
-                                <span><strong>Stuck 2 Weeks?</strong> Deload 10%</span>
-                            </li>
-                        </ul>
                     </div>
 
-                    <div class="p-10 group hover:bg-[#fcfbf7] transition-colors">
-                        <div class="mb-4 flex justify-between items-start">
-                            <span class="font-handwriting text-lg text-primary">The Edge</span>
-                            <Brain class="w-12 h-12 text-primary group-hover:scale-110 transition-transform" :stroke-width="1.5" />
+                    <div v-if="setupStep === 2" class="animate-bounce-in">
+                        <h2 class="font-mono text-sm uppercase tracking-widest text-foreground-text mb-6">Select Intensity</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <button v-for="i in ['beginner', 'intermediate', 'advanced']" :key="i"
+                                @click="tempIntensity = i"
+                                :class="['p-6 border-2 text-left transition-all', tempIntensity === i ? 'border-primary bg-[#fcfbf7] shadow-[4px_4px_0px_0px_#229799] -translate-y-1' : 'border-separator hover:border-foreground-primary']"
+                            >
+                                <h3 class="text-xl font-black uppercase mb-2">{{ i }}</h3>
+                                <p class="font-mono text-xs opacity-70">
+                                    {{ i === 'beginner' ? 'Lower volume, focus on form.' : (i === 'advanced' ? 'High volume, brutal execution.' : 'Balanced progression.') }}
+                                </p>
+                            </button>
                         </div>
-                        <h3 class="text-3xl font-bold mb-6">AI Coach</h3>
-                        <ul class="space-y-4 font-mono text-sm">
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                <span><strong>Auto-export</strong> your full log as CSV</span>
-                            </li>
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                <span><strong>Context-aware</strong> prompt generation</span>
-                            </li>
-                            <li class="flex gap-4 items-center">
-                                <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                <span><strong>Weekly analysis</strong> via Gemini</span>
-                            </li>
-                        </ul>
-                        <NuxtLink
-                            to="/coach"
-                            class="font-mono text-xs text-primary font-bold uppercase tracking-widest mt-8 block hover:underline underline-offset-4"
+                    </div>
+
+                    <div v-if="setupStep === 3" class="animate-bounce-in">
+                        <h2 class="font-mono text-sm uppercase tracking-widest text-foreground-text mb-6">Training Days Per Week</h2>
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                            <button v-for="d in [3,4,5,6,7]" :key="d"
+                                @click="tempFreq = d"
+                                :class="['p-4 border-2 text-center font-black text-2xl transition-all', tempFreq === d ? 'border-primary bg-primary text-white shadow-[4px_4px_0px_0px_#27272a] -translate-y-1' : 'border-separator hover:border-foreground-primary']"
+                            >
+                                {{ d }}
+                            </button>
+                        </div>
+                        <p class="mt-6 text-xs font-mono text-yellow-700 bg-yellow-50 border border-yellow-200 p-3">
+                            Warning: Overtraining is a real threat. If you select 6 or 7 days, ensure your nutrition is dialed in.
+                        </p>
+                    </div>
+
+                    <div class="mt-10 pt-6 border-t border-separator flex justify-between">
+                        <button 
+                            @click="setupStep--" 
+                            :class="['font-bold uppercase tracking-wider text-sm', setupStep === 1 ? 'opacity-0 pointer-events-none' : 'text-foreground-text hover:text-primary']"
                         >
-                            Open AI Coach →
+                            Back
+                        </button>
+                        
+                        <button v-if="setupStep < 3"
+                            @click="setupStep++" 
+                            :disabled="(setupStep === 1 && !tempMode) || (setupStep === 2 && !tempIntensity)"
+                            class="bg-foreground-primary text-white px-8 py-3 font-bold uppercase tracking-wider hover:bg-primary disabled:opacity-50 transition-colors"
+                        >
+                            Next
+                        </button>
+                        
+                        <button v-else
+                            @click="finalizeSetup" 
+                            :disabled="!tempFreq"
+                            class="bg-primary text-white px-8 py-3 font-bold uppercase tracking-wider flex items-center gap-2 hover:bg-foreground-primary transition-colors disabled:opacity-50"
+                        >
+                            Initialize Program
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div v-else class="animate-bounce-in">
+                <div class="flex justify-between items-end mb-8 border-b-2 border-foreground-primary pb-4">
+                    <div>
+                        <span class="font-mono text-xs uppercase tracking-widest text-primary mb-1 block">Active Protocol</span>
+                        <h1 class="text-4xl md:text-5xl font-black uppercase text-foreground-primary tracking-tighter leading-none">
+                            {{ mode }} - {{ frequency }} DAYS
+                        </h1>
+                    </div>
+                    <div class="text-right hidden md:block">
+                        <span class="font-mono text-xs text-foreground-text uppercase">Intensity: {{ intensity }}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white border-2 border-separator p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                        <h2 class="text-2xl font-black uppercase mb-4">Today's Directive</h2>
+                        <p class="font-mono text-sm text-foreground-text mb-6">Navigate to the training log to execute your daily requirements.</p>
+                        <NuxtLink :to="`/${mode}`" class="inline-block text-center w-full py-4 bg-foreground-primary text-white font-bold uppercase tracking-widest hover:bg-primary transition-colors">
+                            Open Log
                         </NuxtLink>
                     </div>
+
+                    <div class="bg-white border-2 border-separator p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                        <h2 class="text-2xl font-black uppercase mb-4">System Settings</h2>
+                        <p class="font-mono text-sm text-foreground-text mb-6">Change your discipline or adjust frequency. (Warning: Resets active tracking interface)</p>
+                        <button @click="resetMode" class="w-full py-4 border-2 border-red-200 text-red-600 font-bold uppercase tracking-widest hover:bg-red-50 transition-colors">
+                            Re-Initialize
+                        </button>
+                    </div>
                 </div>
             </div>
-        </section>
+
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { Dumbbell, Scale, Activity, Brain } from "lucide-vue-next";
-const { isGym, isCalist, setMode } = useMode();
+import { ref } from 'vue';
+import OnboardingTour from '~/components/OnboardingTour.vue';
 
-function onClickGym() {
-    setMode('gym');
-}
+const { mode, intensity, frequency, hasMode, setMode, resetMode } = useMode();
 
-function onClickCalist() {
-    setMode('calist');
+// Setup Wizard State
+const setupStep = ref(1);
+const tempMode = ref("");
+const tempIntensity = ref("");
+const tempFreq = ref(0);
+
+function finalizeSetup() {
+    setMode(tempMode.value, tempIntensity.value, tempFreq.value);
 }
 </script>
+
+<style scoped>
+@keyframes bounceIn {
+    0% { transform: translateY(10px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+.animate-bounce-in { animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+</style>
