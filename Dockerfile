@@ -8,7 +8,8 @@ WORKDIR /app
 # build tools required to compile better-sqlite3 native addon
 RUN apk add --no-cache python3 make g++
 
-COPY package.json package-lock.json* bun.lockb* ./
+# Strictly sticking to NPM lockfiles to avoid split-brain package management
+COPY package.json package-lock.json* ./
 RUN npm install
 
 COPY . .
