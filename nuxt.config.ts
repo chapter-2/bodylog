@@ -56,9 +56,10 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    // Ensures better-sqlite3 native module is bundled correctly
-    externals: {
-      inline: ["better-sqlite3"],
+    // better-sqlite3 has a native .node binary — it CANNOT be bundled/inlined.
+    // Mark as rollup external so Nitro skips it. node_modules stays on disk at runtime.
+    rollupConfig: {
+      external: ["better-sqlite3"],
     },
   },
 });

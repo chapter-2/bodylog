@@ -1,5 +1,7 @@
-# ─── Stage 1: Build ───────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+# Single-stage build — node_modules must stay on disk because better-sqlite3
+# is a native addon (.node binary) that cannot be bundled by Rollup/Nitro.
+# Node resolves it by walking up from .output/server/ → finds /app/node_modules/better-sqlite3.
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -11,18 +13,6 @@ RUN npm install
 
 COPY . .
 RUN npm run build
-
-
-# ─── Stage 2: Production ──────────────────────────────────────────────────────
-FROM node:20-alpine
-
-WORKDIR /app
-
-# runtime build tools needed for better-sqlite3 native .node binary
-RUN apk add --no-cache python3 make g++
-
-# .output is fully self-contained — no npm install needed in prod stage
-COPY --from=builder /app/.output ./.output
 
 # Data directory — mount a volume here to persist the SQLite database
 RUN mkdir -p /data
