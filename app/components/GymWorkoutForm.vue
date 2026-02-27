@@ -70,7 +70,6 @@
                 <div class="flex justify-between items-start mb-4 gap-4">
                     <div class="flex flex-col gap-1 w-full">
 
-                        <!-- Exercise name + variant selector -->
                         <h4 class="text-2xl font-bold group-hover:text-primary transition-colors uppercase leading-tight">
                             {{ exercise.variants ? exercise.name : exercise.name }}
                         </h4>
@@ -261,47 +260,40 @@ const lastSaved = ref("");
 const saveError = ref("");
 const lastWeekData = ref<Record<number, { sets: string[]; exerciseName: string }>>({});
 const showRules = ref(false);
-
-// Session note
 const sessionNote = ref("");
 const showSessionNote = ref(false);
 
-// ─── Program Templates ───
-// Names with " / " are variant groups. The UI will split them into radio options.
-const programTemplates: Record<string, { name: string; focus: string; exercises: string[] }> = {
-    monday: {
-        name: "SENIN",
-        focus: "Back Width",
-        exercises: ["Weighted Pull-Up / Lat Pulldown", "Lat Pulldown (Close Grip)", "Straight Arm Pulldown", "Rear Delt Fly", "Hanging Leg Raise"],
-    },
-    tuesday: {
-        name: "SELASA",
-        focus: "Push (Chest/Shoulders)",
-        exercises: ["Barbell Bench Press", "Overhead Press", "Incline Dumbbell Press", "Lateral Raise", "Tricep Pushdown", "Tricep Overhead Extension"],
-    },
-    wednesday: {
-        name: "RABU",
-        focus: "Legs",
-        exercises: ["Leg Press / Squat", "Leg Curl", "Leg Extension", "Calf Raise", "Hanging Leg Raise"],
-    },
-    friday: {
-        name: "JUMAT",
-        focus: "Back Thickness",
-        exercises: ["Pull-Up", "T-Bar Row / Barbell Row", "Seated Cable Row (Wide)", "Straight Arm Pulldown", "Lateral Raise", "Hammer Curl"],
-    },
-    saturday: {
-        name: "SABTU",
-        focus: "Shoulders + Arms",
-        exercises: ["Lateral Raise", "Face Pull", "Barbell Curl", "Skull Crushers", "Hanging Knee Raise"],
-    },
+// ─── Custom program from DB (overrides defaults if set) ───
+const customProgram = ref<Record<string, { exercises: string[] }> | null>(null);
+
+// ─── Program Defaults ───
+const programDefaults: Record<string, { name: string; focus: string; exercises: string[] }> = {
+    monday:    { name: "SENIN",  focus: "Back Width",           exercises: ["Weighted Pull-Up / Lat Pulldown", "Lat Pulldown (Close Grip)", "Straight Arm Pulldown", "Rear Delt Fly", "Hanging Leg Raise"] },
+    tuesday:   { name: "SELASA", focus: "Push (Chest/Shoulders)", exercises: ["Barbell Bench Press", "Overhead Press", "Incline Dumbbell Press", "Lateral Raise", "Tricep Pushdown", "Tricep Overhead Extension"] },
+    wednesday: { name: "RABU",   focus: "Legs",                 exercises: ["Leg Press / Squat", "Leg Curl", "Leg Extension", "Calf Raise", "Hanging Leg Raise"] },
+    friday:    { name: "JUMAT",  focus: "Back Thickness",       exercises: ["Pull-Up", "T-Bar Row / Barbell Row", "Seated Cable Row (Wide)", "Straight Arm Pulldown", "Lateral Raise", "Hammer Curl"] },
+    saturday:  { name: "SABTU",  focus: "Shoulders + Arms",     exercises: ["Lateral Raise", "Face Pull", "Barbell Curl", "Skull Crushers", "Hanging Knee Raise"] },
 };
 
+// ─── Effective templates (custom overrides defaults) ───
+const effectiveTemplates = computed(() => {
+    if (!customProgram.value) return programDefaults;
+    const result: typeof programDefaults = {};
+    for (const [day, template] of Object.entries(programDefaults)) {
+        const custom = customProgram.value[day];
+        result[day] = {
+            ...template,
+            exercises: (custom?.exercises && custom.exercises.length > 0) ? custom.exercises : template.exercises,
+        };
+    }
+    return result;
+});
+
 // ─── Computed ───
-const dayName = computed(() => programTemplates[props.day]?.name || "REST DAY");
-const dayFocus = computed(() => programTemplates[props.day]?.focus || "Recover");
+const dayName = computed(() => effectiveTemplates.value[props.day]?.name || "REST DAY");
+const dayFocus = computed(() => effectiveTemplates.value[props.day]?.focus || "Recover");
 
 // ─── Helpers ───
-
 function parseVariants(name: string): string[] | null {
     if (!name.includes(" / ")) return null;
     return name.split(" / ").map(v => v.trim());
@@ -321,7 +313,7 @@ function toggleNote(index: number) {
 
 // ─── Initialization ───
 function initializeExercises() {
-    const template = programTemplates[props.day];
+    const template = effectiveTemplates.value[props.day];
     if (!template) {
         exercises.value = [];
         return;
@@ -331,7 +323,7 @@ function initializeExercises() {
         return {
             name,
             variants,
-            selectedVariant: variants ? variants[0] : undefined, // default to first variant
+            selectedVariant: variants ? variants[0] : undefined,
             sets: Array(getSetCount(name)).fill(null).map(() => ({ weight: 0, reps: 0 })),
             note: "",
             showNote: false,
@@ -348,7 +340,7 @@ async function loadLastWeekData() {
 
         const lastWeekWorkouts = data.filter((row: any) => parseInt(row[0]) === props.week - 1);
         if (lastWeekWorkouts.length > 0) {
-            const template = programTemplates[props.day];
+            const template = effectiveTemplates.value[props.day];
             const dataMap: Record<number, { sets: string[]; exerciseName: string }> = {};
 
             template?.exercises.forEach((templateName, idx) => {
@@ -370,10 +362,7 @@ async function loadLastWeekData() {
                 if (exerciseRow) {
                     const sets = [exerciseRow[5], exerciseRow[6], exerciseRow[7], exerciseRow[8]]
                         .filter((s: any) => s && s !== "-" && s !== undefined);
-                    dataMap[idx] = {
-                        sets,
-                        exerciseName: exerciseRow[4], 
-                    };
+                    dataMap[idx] = { sets, exerciseName: exerciseRow[4] };
                 }
             });
             lastWeekData.value = dataMap;
@@ -381,7 +370,7 @@ async function loadLastWeekData() {
     } catch (error) { console.error("Failed to load last week data:", error); }
 }
 
-// ─── Load current session (restore previously saved data for this week+day) ───
+// ─── Load current session ───
 async function loadCurrentSession() {
     try {
         if (dayName.value === "REST DAY") return;
@@ -389,8 +378,6 @@ async function loadCurrentSession() {
 
         const currentSessionRows = data.filter((row: any) => parseInt(row[0]) === props.week);
         if (currentSessionRows.length > 0) {
-
-            // Restore session note from first row's column[11]
             const firstRow = currentSessionRows[0];
             if (firstRow[11]) {
                 sessionNote.value = firstRow[11];
@@ -400,7 +387,6 @@ async function loadCurrentSession() {
             exercises.value.forEach((exercise) => {
                 const variants = exercise.variants;
 
-                // Find saved row: match by variant name or original name
                 let savedRow: any = null;
                 if (variants) {
                     for (const v of variants) {
@@ -415,12 +401,9 @@ async function loadCurrentSession() {
                 }
 
                 if (savedRow) {
-                    // If a variant was saved, restore the radio selection
                     if (variants && variants.includes(savedRow[4])) {
                         exercise.selectedVariant = savedRow[4];
                     }
-
-                    // Restore sets
                     exercise.sets.forEach((set, idx) => {
                         const setString = savedRow[5 + idx];
                         if (setString && setString !== "-") {
@@ -431,14 +414,10 @@ async function loadCurrentSession() {
                             }
                         }
                     });
-
-                    if (savedRow[10]) {
-                        exercise.note = savedRow[10];
-                    }
+                    if (savedRow[10]) { exercise.note = savedRow[10]; }
                 }
             });
 
-            // Restore completed flag
             if (currentSessionRows[0][9] === "YES") { completed.value = true; }
         }
     } catch (error) { console.error("Failed to load current session:", error); }
@@ -458,8 +437,8 @@ async function saveWorkout() {
         const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 
         const exercisePayload = exercises.value.map(ex => ({
-            name: effectiveName(ex),       
-            templateName: ex.name,         
+            name: effectiveName(ex),
+            templateName: ex.name,
             sets: ex.sets,
             note: ex.note || "",
         }));
@@ -492,6 +471,23 @@ async function saveWorkout() {
     }
 }
 
+// ─── Lifecycle ───
+// Load custom program once on mount, then init exercises.
+// Day/week changes after that use the already-loaded custom program.
+onMounted(async () => {
+    try {
+        const res = await $fetch('/api/program/get?mode=gym') as { config: Record<string, { exercises: string[] }> | null };
+        if (res.config) customProgram.value = res.config;
+    } catch {
+        // Fall through to defaults
+    }
+
+    initializeExercises();
+    if (dayName.value !== "REST DAY") {
+        await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+    }
+});
+
 watch(() => props.day, async () => {
     initializeExercises();
     sessionNote.value = "";
@@ -499,7 +495,7 @@ watch(() => props.day, async () => {
     if (dayName.value !== "REST DAY") {
         await Promise.all([loadLastWeekData(), loadCurrentSession()]);
     }
-}, { immediate: true });
+});
 
 watch(() => props.week, () => {
     sessionNote.value = "";

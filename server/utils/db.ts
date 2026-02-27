@@ -79,5 +79,10 @@ function initializeTables(db: Database.Database): void {
       session_note  TEXT    DEFAULT '',
       UNIQUE(week, day, exercise_name)
     );
+
+    CREATE TABLE IF NOT EXISTS program_config (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
 }

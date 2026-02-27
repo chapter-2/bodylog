@@ -266,14 +266,9 @@
 import { BedDouble, Check, MessageSquare, ChevronDown, Target, Youtube, Info, X } from "lucide-vue-next";
 
 // ─── UI Types ───
-interface UISet {
-    value: number;
-}
+interface UISet { value: number; }
 
-interface SubOption {
-    label: string;
-    value: string;
-}
+interface SubOption { label: string; value: string; }
 
 interface UIExercise {
     name: string;
@@ -301,7 +296,10 @@ const sessionNote = ref("");
 const showSessionNote = ref(false);
 const showRules = ref(false);
 
-// ─── Program Templates ───
+// ─── Custom program names from DB ───
+const customProgramNames = ref<Record<string, { exercises: { name: string }[] }> | null>(null);
+
+// ─── Program Defaults ───
 interface ExerciseDef {
     name: string;
     type: 'reps' | 'hold';
@@ -309,7 +307,7 @@ interface ExerciseDef {
     subs?: SubOption[];
 }
 
-const programTemplates: Record<string, { name: string; focus: string; exercises: ExerciseDef[] }> = {
+const programDefaults: Record<string, { name: string; focus: string; exercises: ExerciseDef[] }> = {
     monday: {
         name: "SENIN",
         focus: "Pull — Back Width",
@@ -442,18 +440,38 @@ const programTemplates: Record<string, { name: string; focus: string; exercises:
     },
 };
 
+// ─── Effective templates (custom names override defaults, structure stays) ───
+const effectiveTemplates = computed(() => {
+    if (!customProgramNames.value) return programDefaults;
+    const result: typeof programDefaults = {};
+    for (const [day, template] of Object.entries(programDefaults)) {
+        const customDay = customProgramNames.value[day];
+        if (!customDay?.exercises) {
+            result[day] = template;
+            continue;
+        }
+        result[day] = {
+            ...template,
+            exercises: template.exercises.map((def, idx) => {
+                const customName = customDay.exercises[idx]?.name;
+                if (!customName) return def;
+                // Update base name. Subs values use the new name as prefix where applicable.
+                return { ...def, name: customName };
+            }),
+        };
+    }
+    return result;
+});
+
 // ─── Computed ───
-const dayName = computed(() => programTemplates[props.day]?.name || "REST DAY");
-const dayFocus = computed(() => programTemplates[props.day]?.focus || "Recover");
+const dayName = computed(() => effectiveTemplates.value[props.day]?.name || "REST DAY");
+const dayFocus = computed(() => effectiveTemplates.value[props.day]?.focus || "Recover");
 
 // ─── Helpers ───
-
-// Returns the name to save to sheet — selectedSub if chosen, else exercise name
 function effectiveName(ex: UIExercise): string {
     return ex.selectedSub || ex.name;
 }
 
-// Returns all possible saved names for this exercise (for last-week lookup)
 function allPossibleNames(ex: UIExercise | ExerciseDef): string[] {
     const base = ex.name;
     const subs = (ex as any).subs as SubOption[] | undefined;
@@ -477,7 +495,7 @@ function toggleNote(index: number) {
 
 // ─── Initialization ───
 function initializeExercises() {
-    const template = programTemplates[props.day];
+    const template = effectiveTemplates.value[props.day];
     if (!template) {
         exercises.value = [];
         return;
@@ -502,7 +520,7 @@ async function loadLastWeekData() {
         const lastWeekRows = (data as any[]).filter((row: any) => parseInt(row[0]) === props.week - 1);
 
         if (lastWeekRows.length > 0) {
-            const template = programTemplates[props.day];
+            const template = effectiveTemplates.value[props.day];
             const dataMap: Record<number, { sets: string[]; savedName: string }> = {};
 
             template?.exercises.forEach((def, idx) => {
@@ -549,7 +567,6 @@ async function loadCurrentSession() {
                 }
 
                 if (savedRow) {
-                    // Restore radio selection to whichever sub was saved
                     if (exercise.subs) {
                         const matchedSub = exercise.subs.find(s => s.value === savedRow[4]);
                         if (matchedSub) exercise.selectedSub = matchedSub.value;
@@ -560,15 +577,11 @@ async function loadCurrentSession() {
                         set.value = parseSetValue(stored);
                     });
 
-                    if (savedRow[10]) {
-                        exercise.note = savedRow[10];
-                    }
+                    if (savedRow[10]) { exercise.note = savedRow[10]; }
                 }
             });
 
-            if (currentRows[0][9] === "YES") {
-                completed.value = true;
-            }
+            if (currentRows[0][9] === "YES") { completed.value = true; }
         }
     } catch (error) {
         console.error("Failed to load current session:", error);
@@ -622,6 +635,22 @@ async function saveWorkout() {
     }
 }
 
+// ─── Lifecycle ───
+// Load custom names once on mount, then init. Day/week changes reuse loaded names.
+onMounted(async () => {
+    try {
+        const res = await $fetch('/api/program/get?mode=calist') as { config: Record<string, { exercises: { name: string }[] }> | null };
+        if (res.config) customProgramNames.value = res.config;
+    } catch {
+        // Fall through to defaults
+    }
+
+    initializeExercises();
+    if (dayName.value !== "REST DAY") {
+        await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+    }
+});
+
 watch(() => props.day, async () => {
     initializeExercises();
     sessionNote.value = "";
@@ -629,7 +658,7 @@ watch(() => props.day, async () => {
     if (dayName.value !== "REST DAY") {
         await Promise.all([loadLastWeekData(), loadCurrentSession()]);
     }
-}, { immediate: true });
+});
 
 watch(() => props.week, () => {
     sessionNote.value = "";

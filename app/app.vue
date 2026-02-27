@@ -53,6 +53,14 @@
                         <span class="font-mono text-primary text-[10px] -mt-3">03</span>
                         AI Coach
                     </NuxtLink>
+                    <NuxtLink
+                        v-if="isAuthenticated"
+                        to="/settings"
+                        class="flex items-center gap-1 text-sm font-bold uppercase tracking-wide hover:text-primary transition-colors"
+                    >
+                        <span class="font-mono text-primary text-[10px] -mt-3">04</span>
+                        Settings
+                    </NuxtLink>
                 </div>
 
                 <div class="flex items-center gap-4">
@@ -142,6 +150,15 @@
                         >
                             <span class="text-primary text-sm font-mono mb-1 block">03</span>
                             AI COACH
+                        </NuxtLink>
+                        <NuxtLink
+                            v-if="isAuthenticated"
+                            to="/settings"
+                            @click="isMenuOpen = false"
+                            class="text-4xl font-black uppercase hover:text-primary transition-colors block"
+                        >
+                            <span class="text-primary text-sm font-mono mb-1 block">04</span>
+                            SETTINGS
                         </NuxtLink>
 
                         <div class="h-px bg-separator my-2"></div>
@@ -303,7 +320,7 @@
 <script setup lang="ts">
 import { Menu, X, LogOut, Dumbbell, Activity } from "lucide-vue-next";
 const { isAuthenticated, logout, checkAuth } = useAuth();
-const { isGym, isCalist, hasMode, setMode } = useMode();
+const { isGym, isCalist, hasMode, setMode, mode, intensity, frequency } = useMode();
 
 const isMenuOpen = ref(false);
 const showLogoutModal = ref(false);
@@ -320,8 +337,11 @@ function confirmLogout() {
     navigateTo("/");
 }
 
+// ── FIX: preserve intensity/frequency when switching mode from the quick modal.
+// Previously called setMode(newMode) with 1 arg, which cleared intensity & frequency,
+// making hasMode false and re-showing the full setup wizard on index.vue.
 function selectMode(newMode: 'gym' | 'calist') {
-    setMode(newMode);
+    setMode(newMode, intensity.value || 'intermediate', frequency.value || 5);
     showModeModal.value = false;
     if (newMode === 'gym') {
         navigateTo('/gym');

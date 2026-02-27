@@ -54,4 +54,13 @@ export default defineNuxtConfig({
     preference: "dark",
     fallback: "dark",
   },
+
+  // ── CRITICAL: better-sqlite3 is a native addon (.node binary).
+  // It cannot be bundled by Rollup. Node must resolve it from disk.
+  // Do NOT change this to externals.inline — that will break the build.
+  nitro: {
+    rollupConfig: {
+      external: ["better-sqlite3"],
+    },
+  },
 });
