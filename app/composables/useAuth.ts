@@ -1,65 +1,107 @@
 export const useAuth = () => {
-    const isAuthenticated = useState<boolean>('isAuthenticated', () => false);
+    const user = useState<any>('user', () => null);
+    const isAuthenticated = computed(() => !!user.value);
+    
     const authCookie = useCookie('auth_token', {
         maxAge: 60 * 60 * 24 * 7, // 7 days
         sameSite: 'lax'
     });
 
-    // Auto-check auth on composable initialization (client-side only)
-    const checkAuth = () => {
-        if (authCookie.value === 'logged_in') {
-            isAuthenticated.value = true;
-        } else {
-            isAuthenticated.value = false;
+    const checkAppStatus = async (): Promise<boolean> => {
+        try {
+            const res = await $fetch('/api/auth/status');
+            // @ts-ignore
+            return res.isSetup;
+        } catch {
+            return true; // Default ke aman (login) jika error
         }
     };
-    
+
+    const checkAuth = async () => {
+        if (!authCookie.value) {
+            user.value = null;
+            return false;
+        }
+        try {
+            const response = await $fetch('/api/auth/me');
+            // @ts-ignore
+            user.value = response.user;
+            return true;
+        } catch (error) {
+            user.value = null;
+            authCookie.value = null; 
+            return false;
+        }
+    };
+
     if (process.client) {
         checkAuth();
     }
 
-    const login = async (password: string): Promise<boolean> => {
+    const login = async (username: string, password: string): Promise<boolean> => {
         try {
-            const response = await $fetch('/api/auth/verify', {
+            const response = await $fetch('/api/auth/login', {
                 method: 'POST',
-                body: { password: password } 
+                body: { username, password } 
             });
 
             // @ts-ignore
             if (response.success) {
-                authCookie.value = 'logged_in';
-                
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-                isAuthenticated.value = true;
+                // @ts-ignore
+                authCookie.value = response.token;
+                // @ts-ignore
+                user.value = response.user;
                 return true;
             }
             return false;
-        } catch (error) {
-            isAuthenticated.value = false;
+        } catch (error: any) {
             authCookie.value = null; 
-            console.error("Login failed", error);
+            throw new Error(error.data?.message || "Login failed");
+        }
+    };
+
+    const setupAccount = async (username: string, password: string): Promise<boolean> => {
+        try {
+            const response = await $fetch('/api/auth/setup', {
+                method: 'POST',
+                body: { username, password } 
+            });
+
+            // @ts-ignore
+            if (response.success) {
+                // @ts-ignore
+                authCookie.value = response.token;
+                // @ts-ignore
+                user.value = response.user;
+                return true;
+            }
             return false;
+        } catch (error: any) {
+            authCookie.value = null;
+            throw new Error(error.data?.message || "Setup failed");
         }
     };
 
     const logout = () => {
-        isAuthenticated.value = false;
+        user.value = null;
         authCookie.value = null;
         navigateTo('/login');
     };
 
     const secureFetch = async (url: string, options: any = {}) => {
-        if (!isAuthenticated.value) {
+        if (!authCookie.value) {
             throw createError({ statusCode: 401, message: "Unauthorized" });
         }
         return await $fetch(url, options);
     };
 
     return {
+        user,
         isAuthenticated,
+        checkAppStatus,
         checkAuth,
         login,
+        setupAccount,
         logout,
         secureFetch
     };

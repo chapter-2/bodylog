@@ -24,6 +24,20 @@ export function getDb(): Database.Database {
 
 function initializeTables(db: Database.Database): void {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      username      TEXT    NOT NULL UNIQUE,
+      password_hash TEXT    NOT NULL,
+      created_at    TEXT    DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      token         TEXT    PRIMARY KEY,
+      user_id       INTEGER NOT NULL,
+      expires_at    INTEGER NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS bulk_entries (
       id      INTEGER PRIMARY KEY AUTOINCREMENT,
       week    INTEGER NOT NULL UNIQUE,
