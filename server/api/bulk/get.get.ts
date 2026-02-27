@@ -1,18 +1,24 @@
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async () => {
   try {
-    const sheets = await getGoogleSheetsClient();
-    const spreadsheetId = await getSpreadsheetId();
+    const db = getDb();
 
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: "BULK!A:D",
-    });
+    const rows = db.prepare(
+      'SELECT week, date, weight, notes FROM bulk_entries ORDER BY week ASC'
+    ).all() as { week: number; date: string; weight: number; notes: string }[];
 
-    return { data: response.data.values || [] };
+    const header = ['Week', 'Date', 'Weight (kg)', 'Notes'];
+    const data = [
+      header,
+      ...rows.map(r => [
+        r.week.toString(),
+        r.date,
+        r.weight.toString(),
+        r.notes ?? '',
+      ]),
+    ];
+
+    return { data };
   } catch (error: any) {
-    throw createError({
-      statusCode: 500,
-      message: error.message,
-    });
+    throw createError({ statusCode: 500, message: error.message });
   }
 });

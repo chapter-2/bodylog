@@ -1,58 +1,45 @@
 export default defineEventHandler(async (event) => {
   try {
-    const sheets = await getGoogleSheetsClient();
-    const spreadsheetId = await getSpreadsheetId();
-
+    const db = getDb();
     const query = getQuery(event);
     const day = query.day as string | undefined;
 
-    const getRange = (sheet: string) => `${sheet}!A:L`;
+    type SessionRow = {
+      week: number; day: string; date: string; time: string;
+      exercise_name: string; set1: string; set2: string; set3: string; set4: string;
+      completed: string; notes: string; session_note: string;
+    };
+
+    let rows: SessionRow[];
 
     if (day) {
-      const sheetName = `CALIST-${day}`;
-      try {
-        const response = await sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: getRange(sheetName),
-        });
-        return { data: response.data.values || [] };
-      } catch (error) {
-        return { data: [] };
-      }
+      rows = db.prepare(
+        'SELECT * FROM calist_sessions WHERE day = ? ORDER BY week ASC'
+      ).all(day) as SessionRow[];
+    } else {
+      rows = db.prepare(
+        'SELECT * FROM calist_sessions ORDER BY week DESC'
+      ).all() as SessionRow[];
     }
 
-    // No day specified — fetch all calist training days
-    const days = ["SENIN", "RABU", "JUMAT", "SABTU", "MINGGU"];
-    let allData: any[] = [];
+    const data = rows.map(r => [
+      r.week.toString(),
+      r.day,
+      r.date,
+      r.time ?? '',
+      r.exercise_name,
+      r.set1 ?? '-',
+      r.set2 ?? '-',
+      r.set3 ?? '-',
+      r.set4 ?? '-',
+      r.completed ?? 'NO',
+      r.notes ?? '',
+      r.session_note ?? '',
+    ]);
 
-    for (const dayName of days) {
-      const sheetName = `CALIST-${dayName}`;
-      try {
-        const response = await sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: getRange(sheetName),
-        });
-        if (response.data.values && response.data.values.length > 0) {
-          // Skip header row when aggregating
-          allData = allData.concat(response.data.values.slice(1));
-        }
-      } catch (error) {
-        continue;
-      }
-    }
-
-    allData.sort((a, b) => {
-      const weekA = parseInt(a[0]) || 0;
-      const weekB = parseInt(b[0]) || 0;
-      return weekB - weekA;
-    });
-
-    return { data: allData };
+    return { data };
   } catch (error: any) {
-    console.error("Failed to get calist data:", error);
-    throw createError({
-      statusCode: 500,
-      message: error.message,
-    });
+    console.error('Failed to get calist data:', error);
+    throw createError({ statusCode: 500, message: error.message });
   }
 });

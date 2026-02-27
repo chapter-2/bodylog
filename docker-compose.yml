@@ -1,0 +1,18 @@
+services:
+  bodylog:
+    build: .
+    container_name: bodylog
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # SQLite database persisted outside the container
+      - bodylog_data:/data
+    environment:
+      NODE_ENV: production
+      APP_PASSWORD: ${APP_PASSWORD}
+      DB_PATH: /data
+
+volumes:
+  bodylog_data:
+    driver: local

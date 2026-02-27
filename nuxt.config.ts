@@ -48,16 +48,17 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     appPassword: process.env.APP_PASSWORD,
-    googleServiceAccount: {
-      projectId: process.env.GOOGLE_PROJECT_ID,
-      privateKey: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      clientEmail: process.env.GOOGLE_CLIENT_EMAIL,
-    },
-    spreadsheetId: process.env.SPREADSHEET_ID,
   },
 
   colorMode: {
     preference: "dark",
     fallback: "dark",
+  },
+
+  nitro: {
+    // Ensures better-sqlite3 native module is bundled correctly
+    externals: {
+      inline: ["better-sqlite3"],
+    },
   },
 });
