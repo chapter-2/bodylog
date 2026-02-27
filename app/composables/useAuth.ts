@@ -13,7 +13,7 @@ export const useAuth = () => {
             // @ts-ignore
             return res.isSetup;
         } catch {
-            return true; // Default ke aman (login) jika error
+            return true; 
         }
     };
 
