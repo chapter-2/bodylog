@@ -4,7 +4,7 @@
         <div
             v-if="open"
             class="fixed inset-0 z-[90] bg-black/60 md:hidden"
-            @click="$emit('close')"
+            @click="handleClose"
         />
     </transition>
 
@@ -34,7 +34,7 @@
                     </p>
                     <h2 class="text-xl font-black uppercase text-foreground-primary leading-tight">Edit Program</h2>
                 </div>
-                <button @click="$emit('close')" class="p-2 hover:text-red-500 transition-colors">
+                <button @click="handleClose" class="p-2 hover:text-red-500 transition-colors">
                     <X class="w-5 h-5" />
                 </button>
             </div>
@@ -292,7 +292,7 @@
             <!-- ── Footer ── -->
             <div class="px-5 py-4 border-t-2 border-separator bg-[#fcfbf7] flex gap-3 shrink-0">
                 <button
-                    @click="$emit('close')"
+                    @click="handleClose"
                     class="flex-1 py-3 border-2 border-separator text-foreground-text font-bold text-xs uppercase tracking-widest rounded-xl hover:border-foreground-primary transition-colors"
                 >
                     Cancel
@@ -368,6 +368,18 @@ const newExerciseName = ref('');
 const addInputRef = ref<HTMLInputElement | null>(null);
 const customEquipmentInput = ref('');
 const isSaving = ref(false);
+
+const isDirty = computed(() => {
+    return JSON.stringify(localExercises.value) !== JSON.stringify(props.exercises);
+});
+
+const handleClose = () => {
+    if (isDirty.value) {
+        const confirmExit = window.confirm("Ada perubahan yang belum disimpan. Yakin ingin keluar?");
+        if (!confirmExit) return;
+    }
+    emit('close');
+};
 
 // ─── Drag-and-drop for exercise list ───
 const [exerciseListRef] = useDragAndDrop(localExercises, {
@@ -603,3 +615,4 @@ onUnmounted(() => document.removeEventListener('keydown', onKeyDown));
     transform: translateY(-6px);
 }
 </style>
+
