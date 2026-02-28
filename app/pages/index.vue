@@ -344,7 +344,6 @@
             </div>
         </transition>
 
-        <OnboardingTour />
     </div>
 </template>
 

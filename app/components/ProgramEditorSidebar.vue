@@ -11,6 +11,7 @@
     <!-- ─── DRAWER PANEL ─── -->
     <transition :name="isMobile ? 'sheet-slide' : 'drawer-slide'">
         <div
+            id="program-editor-sidebar"
             v-if="open"
             :class="[
                 'fixed z-[100] bg-white flex flex-col overflow-hidden',

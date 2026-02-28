@@ -20,10 +20,11 @@
             <div class="flex items-center gap-3 flex-wrap">
                 <!-- ── EDIT PROGRAM BUTTON (BUG-04 + new feature) ── -->
                 <button
-                    v-if="isAuthenticated && exercises.length > 0"
-                    @click="openProgramEditor"
-                    class="flex items-center gap-2 px-4 py-2 border-2 border-separator rounded-xl font-bold text-xs uppercase tracking-widest text-foreground-text hover:border-primary hover:text-primary transition-all group"
-                >
+    id="tour-edit-btn"
+    v-if="isAuthenticated && exercises.length > 0"
+    @click="openProgramEditor"
+    class="flex items-center gap-2 px-4 py-2 border-2 border-separator rounded-xl font-bold text-xs uppercase tracking-widest text-foreground-text hover:border-primary hover:text-primary transition-all group"
+>
                     <Pencil class="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
                     Edit Program
                 </button>
@@ -285,6 +286,7 @@ interface SidebarExercise {
 const props = defineProps<{ week: number; day: string; }>();
 const emit = defineEmits(["saved"]);
 const { isAuthenticated, secureFetch } = useAuth();
+const route = useRoute();
 
 // ─── State ───
 const exercises = ref<UIExercise[]>([]);
@@ -561,6 +563,12 @@ onMounted(async () => {
     if (dayName.value !== "REST DAY") {
         await Promise.all([loadLastWeekData(), loadCurrentSession()]);
     }
+
+    if (route.query.tour === 'editor') {
+        setTimeout(() => {
+            openProgramEditor();
+        }, 500);
+    }
 });
 
 watch(() => props.day, async () => {
@@ -580,6 +588,14 @@ watch(() => props.week, () => {
         loadCurrentSession();
     }
 });
+
+watch(() => route.query.tour, (newVal) => {
+    if (newVal === 'step5') {
+        setTimeout(() => {
+            openProgramEditor();
+        }, 100);
+    }
+}, { immediate: true });
 </script>
 
 <style scoped>

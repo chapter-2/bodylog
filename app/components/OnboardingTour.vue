@@ -1,50 +1,235 @@
 <template>
     <transition name="fade">
-        <div v-if="isActive" class="fixed inset-0 z-[200] pointer-events-none">
-            <div class="absolute inset-0 bg-background/80 backdrop-blur-sm pointer-events-auto" @click="nextStep"></div>
+        <div v-if="isActive" class="fixed inset-0 z-[200] pointer-events-none overflow-hidden">
+            
+            <div class="fixed inset-0 z-[180] pointer-events-auto" @click="step === 5 ? finishTour() : nextStep()"></div>
+            
+            <div v-if="targetRect"
+                 class="fixed z-[190] pointer-events-none transition-all duration-200 shadow-[0_0_0_9999px_rgba(0,0,0,0.85)]"
+                 :style="{
+                     top: step === 5 && windowWidth < 768 ? targetRect.top + 'px' : (targetRect.top - 8) + 'px',
+                     left: step === 5 ? targetRect.left + 'px' : (targetRect.left - 8) + 'px',
+                     width: step === 5 ? targetRect.width + 'px' : (targetRect.width + 16) + 'px',
+                     height: step === 5 ? targetRect.height + 'px' : (targetRect.height + 16) + 'px',
+                     borderRadius: step === 5 ? (windowWidth < 768 ? '16px 16px 0 0' : '0') : '8px'
+                 }"
+            ></div>
 
-            <div v-if="step === 1" class="absolute top-24 right-10 flex flex-col items-end animate-bounce-in">
-                <div class="bg-white border-2 border-foreground-primary p-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-xs mb-4 pointer-events-auto">
-                    <h3 class="font-black uppercase text-xl mb-1">Track Your Mass</h3>
-                    <p class="font-mono text-xs text-foreground-text mb-4">Click "BULK" in the menu to log your weekly weight and cardio sessions.</p>
-                    <button @click.stop="nextStep" class="btn-pow w-full text-xs py-2 bg-primary text-white border-2 border-foreground-primary">GOT IT</button>
-                </div>
-                <svg class="arrow-svg rotate-12" width="120" height="80" viewBox="0 0 120 80" fill="none">
-                    <path d="M 20 70 C 20 40, 60 20, 110 10" stroke="#FCD34D" stroke-width="4" stroke-linecap="round" fill="none"/>
-                    <path d="M 95 20 L 110 10 L 100 0" stroke="#FCD34D" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+            <div v-if="step <= 4 && targetRect" 
+                 class="fixed z-[200] flex flex-col animate-bounce-in w-[calc(100%-32px)] max-w-[320px] pointer-events-none"
+                 :style="getUnifiedTooltipStyle()">
+                 
+                 <svg class="w-12 h-12 mb-2 text-white drop-shadow-[3px_3px_0px_rgba(0,0,0,1)]"
+                      :style="getArrowStyle()"
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                     <path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>
+                 </svg>
+                 
+                 <div class="bg-white border-2 border-foreground-primary p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] pointer-events-auto text-left w-full relative z-10">
+                     <div class="font-mono text-xs text-primary font-bold mb-1">Step {{ step }}/5</div>
+                     <h3 class="font-black uppercase text-xl mb-2">{{ currentContent.title }}</h3>
+                     <p class="font-mono text-xs text-foreground-text mb-6 leading-relaxed" v-html="currentContent.desc"></p>
+                     <button @click.stop="nextStep" class="w-full py-3 bg-foreground-primary text-white font-bold text-xs uppercase tracking-wider hover:bg-primary transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]">
+                         {{ step === 4 ? 'Buka Editor →' : 'Next →' }}
+                     </button>
+                 </div>
             </div>
 
-            <div v-if="step === 2" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-bounce-in">
-                <svg class="arrow-svg mb-4 -rotate-90" width="120" height="80" viewBox="0 0 120 80" fill="none">
-                    <path d="M 10 70 C 10 40, 60 20, 110 10" stroke="#FCD34D" stroke-width="4" stroke-linecap="round" fill="none"/>
-                    <path d="M 95 20 L 110 10 L 100 0" stroke="#FCD34D" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <div class="bg-white border-2 border-foreground-primary p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-sm text-center pointer-events-auto">
-                    <h3 class="font-black uppercase text-2xl mb-2">Execute Your Program</h3>
-                    <p class="font-mono text-xs text-foreground-text mb-6">Your selected training mode dictates your daily logs. Stick to the plan and log every set.</p>
-                    <button @click.stop="finishTour" class="btn-pow w-full h-12 bg-foreground-primary text-white font-bold uppercase tracking-wider">Start Grinding</button>
-                </div>
+            <div v-if="step === 5 && targetRect" 
+                 class="fixed z-[200] flex flex-col md:flex-row items-center animate-bounce-in w-[calc(100%-32px)] max-w-[320px]"
+                 :style="getStep5Style()">
+                 
+                 <div class="bg-white border-2 border-foreground-primary p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full pointer-events-auto text-left relative z-10">
+                     <div class="font-mono text-xs text-primary font-bold mb-1">Step 5/5</div>
+                     <h3 class="font-black uppercase text-xl mb-2">Drag & Drop</h3>
+                     <p class="font-mono text-xs text-foreground-text mb-6 leading-relaxed">
+                         Ini Sidebar Editor. <span class="inline md:hidden">Di HP muncul dari bawah.</span><span class="hidden md:inline">Di PC muncul dari kanan.</span><br><br>
+                         Ganti urutan, set target repetisi, dan catat alat alternatif (substitusi) di sini. Semua perubahan akan langsung tersimpan.
+                     </p>
+                     <button @click.stop="finishTour" class="w-full py-3 bg-primary text-white font-bold text-xs uppercase tracking-wider hover:bg-foreground-primary transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] active:scale-[0.98]">
+                         Selesai & Eksekusi
+                     </button>
+                 </div>
+
+                 <svg class="block md:hidden w-12 h-12 mt-2 text-white drop-shadow-[3px_3px_0px_rgba(0,0,0,1)] rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+                 <svg class="hidden md:block w-16 h-16 ml-4 text-white drop-shadow-[3px_3px_0px_rgba(0,0,0,1)] rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
             </div>
+
         </div>
     </transition>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 
-const { hasSeenTour, completeTour, hasMode } = useMode();
+const { hasSeenTour, completeTour, hasMode, mode } = useMode();
+const isMenuOpen = useState('isMenuOpen', () => false);
 const step = ref(1);
 
-// Only active if they have set up their mode, but haven't seen the tour yet
 const isActive = computed(() => hasMode.value && !hasSeenTour.value);
 
-function nextStep() {
-    step.value++;
+const contents = [
+    { title: '01. Eksekusi Harian', desc: 'Ini medan tempurmu. Buka tiap hari latihan untuk mencatat progres beban dan repetisi.' },
+    { title: '02. Weigh-In', desc: 'Set targetmu (Bulk/Cut/Maintain) dan pantau deviasi berat badan mingguanmu secara presisi di sini.' },
+    { title: '03. AI Coach', desc: 'Ekspor datamu ke CSV. Biarkan AI menganalisis letak plateau atau kesalahan rasio volume latihanmu.' },
+    { title: 'Program Editor', desc: 'Perhatikan tombol yang disorot ini. Klik untuk mengkustomisasi program (<i>drag-and-drop</i> urutan, ubah alat, set reps).' }
+];
+const currentContent = computed(() => contents[step.value - 1] || contents[0]);
+
+// ─── RADAR LOGIC ───
+const targetRect = ref<{ top: number; left: number; right: number; bottom: number; width: number; height: number } | null>(null);
+const windowWidth = ref(1024);
+let positionInterval: ReturnType<typeof setInterval> | null = null;
+
+const targetId = computed(() => {
+    const isMob = windowWidth.value < 768;
+    if (step.value === 1) return isMob ? 'mob-log' : 'nav-log';
+    if (step.value === 2) return isMob ? 'mob-weight' : 'nav-weight';
+    if (step.value === 3) return isMob ? 'mob-coach' : 'nav-coach';
+    if (step.value === 4) return 'tour-edit-btn';
+    if (step.value === 5) return 'program-editor-sidebar';
+    return null;
+});
+
+const updatePosition = () => {
+    if (typeof window === 'undefined') return;
+    windowWidth.value = window.innerWidth;
+    if (!targetId.value) return;
+    
+    const el = document.getElementById(targetId.value);
+    if (el) {
+        targetRect.value = el.getBoundingClientRect();
+    }
+};
+
+// ─── DYNAMIC STYLE COMPUTATIONS ───
+function getUnifiedTooltipStyle() {
+    if (!targetRect.value) return {};
+    const isMob = windowWidth.value < 768;
+    let top = targetRect.value.bottom + (step.value === 4 ? 16 : 8);
+    
+    if (isMob) {
+        return { top: top + 'px', left: '16px' }; 
+    } else {
+        let left = targetRect.value.left + (targetRect.value.width / 2) - 160;
+        if (left < 16) left = 16;
+        if (left + 320 > windowWidth.value - 16) left = windowWidth.value - 336;
+        
+        if (step.value === 4) {
+            let right = Math.max(16, windowWidth.value - targetRect.value.right - 10);
+            return { top: top + 'px', right: right + 'px' };
+        }
+        return { top: top + 'px', left: left + 'px' };
+    }
 }
 
-function finishTour() {
+function getArrowStyle() {
+    if (!targetRect.value) return {};
+    const isMob = windowWidth.value < 768;
+    const targetCenter = targetRect.value.left + (targetRect.value.width / 2);
+    
+    if (isMob) {
+        let translateX = targetCenter - 40; 
+        if (translateX < 10) translateX = 10;
+        if (translateX > 270) translateX = 270;
+        return { transform: `translateX(${translateX}px)` };
+    } else {
+        if (step.value === 4) {
+            return { alignSelf: 'flex-end', marginRight: '24px' };
+        } else {
+            let tooltipLeft = targetRect.value.left + (targetRect.value.width / 2) - 160;
+            if (tooltipLeft < 16) tooltipLeft = 16;
+            if (tooltipLeft + 320 > windowWidth.value - 16) tooltipLeft = windowWidth.value - 336;
+            
+            let translateX = targetCenter - tooltipLeft - 24; 
+            if (translateX < 10) translateX = 10;
+            if (translateX > 270) translateX = 270;
+            return { transform: `translateX(${translateX}px)` };
+        }
+    }
+}
+
+function getStep5Style() {
+    if (!targetRect.value) return {};
+    const isMob = windowWidth.value < 768;
+    if (isMob) {
+        let top = targetRect.value.top - 270; 
+        if (top < 16) top = 16;
+        return { top: top + 'px', left: '16px' };
+    } else {
+        let right = windowWidth.value - targetRect.value.left + 16;
+        return { top: '30vh', right: right + 'px' };
+    }
+}
+
+// ─── TOUR ENGINE ───
+watch(step, async (newVal) => {
+    if (typeof window === 'undefined') return;
+    const isMob = window.innerWidth < 768;
+
+    // Paksa Menu HP terbuka jika masih di tahap eksplorasi navigasi
+    if (newVal <= 3 && isMob) {
+        isMenuOpen.value = true;
+    } else {
+        isMenuOpen.value = false;
+    }
+
+    // Auto-Scroll Presisi
+    setTimeout(() => {
+        if (targetId.value) {
+            const el = document.getElementById(targetId.value);
+            // Menarik elemen agar berada di tengah pandangan secara smooth
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (newVal <= 3 && !isMob) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, 300);
+
+    // Restart Radar
+    if (positionInterval) clearInterval(positionInterval);
+    let attempts = 0;
+    positionInterval = setInterval(() => {
+        updatePosition();
+        attempts++;
+        // Berhenti scan konstan setelah 3 detik untuk menghemat memori, 
+        // kecuali jika user melakukan resize/scroll.
+        if (attempts > 60 && positionInterval && step.value < 4) {
+            clearInterval(positionInterval);
+        }
+    }, 50);
+
+    // True flag: Menangkap event scroll dari elemen dalam (seperti menu HP yang bisa di-scroll)
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true); 
+}, { immediate: true });
+
+onUnmounted(() => {
+    if (positionInterval) clearInterval(positionInterval);
+    if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener('scroll', updatePosition, true);
+    }
+});
+
+async function nextStep() {
+    if (step.value === 3) {
+        step.value = 4;
+        const targetPath = mode.value === 'gym' ? '/gym' : '/calist';
+        await navigateTo(`${targetPath}?tour=step4`);
+    } else if (step.value === 4) {
+        step.value = 5;
+        const targetPath = mode.value === 'gym' ? '/gym' : '/calist';
+        await navigateTo(`${targetPath}?tour=step5`);
+    } else if (step.value < 5) {
+        step.value++;
+    } else {
+        finishTour();
+    }
+}
+
+async function finishTour() {
     completeTour();
+    await navigateTo('/'); 
 }
 </script>
 
