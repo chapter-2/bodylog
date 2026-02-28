@@ -7,7 +7,7 @@
                 <h2 class="text-4xl md:text-5xl font-black uppercase mt-1">
                     {{ dayName }}
                 </h2>
-                <div class="flex items-center gap-2 mt-2">
+                <div class="flex items-center gap-2 mt-2 flex-wrap">
                     <p class="font-mono text-sm text-foreground-text">Focus: {{ dayFocus }}</p>
 
                     <button
@@ -21,9 +21,21 @@
                 </div>
             </div>
 
-            <div v-if="lastSaved" class="px-4 py-2 border border-separator rounded-full bg-background flex items-center gap-2">
-                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                <span class="font-mono text-xs uppercase tracking-widest">Saved: {{ lastSaved }}</span>
+            <div class="flex items-center gap-3 flex-wrap">
+                <!-- ── EDIT PROGRAM BUTTON ── -->
+                <button
+                    v-if="isAuthenticated && exercises.length > 0"
+                    @click="openProgramEditor"
+                    class="flex items-center gap-2 px-4 py-2 border-2 border-separator rounded-xl font-bold text-xs uppercase tracking-widest text-foreground-text hover:border-primary hover:text-primary transition-all group"
+                >
+                    <Pencil class="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
+                    Edit Program
+                </button>
+
+                <div v-if="lastSaved" class="px-4 py-2 border border-separator rounded-full bg-background flex items-center gap-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    <span class="font-mono text-xs uppercase tracking-widest">Saved: {{ lastSaved }}</span>
+                </div>
             </div>
         </div>
 
@@ -74,6 +86,15 @@
             >
                 <div class="flex justify-between items-start mb-4 gap-4">
                     <div class="flex flex-col gap-1 w-full">
+
+                        <!-- Target reps hint (from program editor) -->
+                        <div v-if="exercise.targetReps && exercise.targetReps > 0" class="inline-flex items-center gap-1.5 w-fit mb-1">
+                            <span class="font-mono text-[10px] text-foreground-text/50 uppercase tracking-widest">Target:</span>
+                            <span class="font-mono text-[10px] font-bold text-primary px-1.5 py-0.5 bg-primary/10 rounded">
+                                {{ exercise.sets.length }}×{{ exercise.targetReps }}{{ exercise.type === 'hold' ? 's' : ' reps' }}
+                            </span>
+                        </div>
+
                         <div class="flex items-center gap-2 flex-wrap">
                             <h4 class="text-2xl font-bold group-hover:text-primary transition-colors uppercase leading-tight">
                                 {{ exercise.name }}
@@ -88,7 +109,7 @@
                             </span>
                         </div>
 
-                        <!-- Substitution radio buttons — only shown if exercise has subs -->
+                        <!-- Substitution radio buttons -->
                         <div v-if="exercise.subs" class="flex flex-wrap gap-2 mt-2">
                             <label
                                 v-for="sub in exercise.subs"
@@ -135,7 +156,7 @@
                         <span class="font-mono text-xs border border-separator px-2 py-1 rounded bg-white whitespace-nowrap">
                             {{ exercise.sets.length }} SETS
                         </span>
-                        <a 
+                        <a
                             :href="`https://www.youtube.com/results?search_query=${encodeURIComponent(effectiveName(exercise) + ' tutorial form calisthenics')}`"
                             target="_blank"
                             class="flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-600 border border-red-100 rounded hover:bg-red-600 hover:text-white hover:border-red-600 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
@@ -259,15 +280,23 @@
             </div>
         </transition>
 
+        <!-- ─── PROGRAM EDITOR SIDEBAR ─── -->
+        <ProgramEditorSidebar
+            :open="showProgramEditor"
+            mode="calist"
+            :day="props.day"
+            :exercises="sidebarExercises"
+            @close="showProgramEditor = false"
+            @saved="onProgramSaved"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
-import { BedDouble, Check, MessageSquare, ChevronDown, Target, Youtube, Info, X } from "lucide-vue-next";
+import { BedDouble, Check, MessageSquare, ChevronDown, Target, Youtube, Info, X, Pencil } from "lucide-vue-next";
 
 // ─── UI Types ───
 interface UISet { value: number; }
-
 interface SubOption { label: string; value: string; }
 
 interface UIExercise {
@@ -278,6 +307,16 @@ interface UIExercise {
     selectedSub?: string;
     note?: string;
     showNote?: boolean;
+    targetReps?: number;   // from program editor
+}
+
+interface SidebarExercise {
+    id: string;
+    name: string;
+    sets: number;
+    targetReps: number;
+    equipment: string[];
+    type: 'reps' | 'hold';
 }
 
 // ─── Props / Emits ───
@@ -296,15 +335,22 @@ const sessionNote = ref("");
 const showSessionNote = ref(false);
 const showRules = ref(false);
 
-// ─── Custom program names from DB ───
-const customProgramNames = ref<Record<string, { exercises: { name: string }[] }> | null>(null);
+// ─── Program editor state ───
+const showProgramEditor = ref(false);
+const sidebarExercises = ref<SidebarExercise[]>([]);
+
+// ─── Custom program from DB ───
+// Enriched format: { [day]: { exercises: [{ name, setCount, targetReps, equipment, type }] } }
+const customProgram = ref<Record<string, { exercises: any[] }> | null>(null);
 
 // ─── Program Defaults ───
 interface ExerciseDef {
     name: string;
     type: 'reps' | 'hold';
     setCount: number;
+    targetReps?: number;
     subs?: SubOption[];
+    equipment?: string[];  // for sidebar compatibility
 }
 
 const programDefaults: Record<string, { name: string; focus: string; exercises: ExerciseDef[] }> = {
@@ -312,18 +358,20 @@ const programDefaults: Record<string, { name: string; focus: string; exercises: 
         name: "SENIN",
         focus: "Pull — Back Width",
         exercises: [
-            { name: "Scapular Pull-up", type: "reps", setCount: 3 },
-            { name: "Wide Grip Pull-up", type: "reps", setCount: 4 },
+            { name: "Scapular Pull-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Pull-up Bar"] },
+            { name: "Wide Grip Pull-up", type: "reps", setCount: 4, targetReps: 6, equipment: ["Pull-up Bar"] },
             {
                 name: "Band Face Pull",
                 type: "reps",
                 setCount: 3,
+                targetReps: 15,
+                equipment: ["Band"],
                 subs: [
                     { label: "Band Face Pull", value: "Band Face Pull" },
                     { label: "Scapular Pull-up (no band)", value: "Scapular Pull-up (sub)" },
                 ],
             },
-            { name: "Hollow Body Hold", type: "hold", setCount: 3 },
+            { name: "Hollow Body Hold", type: "hold", setCount: 3, targetReps: 20, equipment: ["Floor"] },
         ],
     },
     wednesday: {
@@ -334,6 +382,8 @@ const programDefaults: Record<string, { name: string; focus: string; exercises: 
                 name: "Planche Lean",
                 type: "hold",
                 setCount: 4,
+                targetReps: 15,
+                equipment: ["Parallettes", "Floor"],
                 subs: [
                     { label: "Parallettes", value: "Planche Lean (Parallettes)" },
                     { label: "Floor (fist)", value: "Planche Lean (Floor)" },
@@ -343,16 +393,20 @@ const programDefaults: Record<string, { name: string; focus: string; exercises: 
                 name: "Push-up (Parallettes)",
                 type: "reps",
                 setCount: 4,
+                targetReps: 10,
+                equipment: ["Parallettes", "Floor"],
                 subs: [
                     { label: "Parallettes", value: "Push-up (Parallettes)" },
                     { label: "Floor Push-up", value: "Push-up (Floor)" },
                 ],
             },
-            { name: "Pike Push-up", type: "reps", setCount: 3 },
+            { name: "Pike Push-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Floor"] },
             {
                 name: "Band Lateral Raise",
                 type: "reps",
                 setCount: 4,
+                targetReps: 15,
+                equipment: ["Band"],
                 subs: [
                     { label: "Band Lateral Raise", value: "Band Lateral Raise" },
                     { label: "Pike Push-up +1 set (no band)", value: "Pike Push-up (sub lateral)" },
@@ -368,16 +422,20 @@ const programDefaults: Record<string, { name: string; focus: string; exercises: 
                 name: "Tuck Planche Hold",
                 type: "hold",
                 setCount: 4,
+                targetReps: 10,
+                equipment: ["Parallettes", "Floor"],
                 subs: [
                     { label: "Parallettes", value: "Tuck Planche Hold (Parallettes)" },
                     { label: "Floor (fist)", value: "Tuck Planche Hold (Floor)" },
                 ],
             },
-            { name: "Chin-up", type: "reps", setCount: 4 },
+            { name: "Chin-up", type: "reps", setCount: 4, targetReps: 6, equipment: ["Pull-up Bar"] },
             {
                 name: "L-sit",
                 type: "hold",
                 setCount: 3,
+                targetReps: 10,
+                equipment: ["Parallettes", "Floor"],
                 subs: [
                     { label: "Parallettes", value: "L-sit (Parallettes)" },
                     { label: "Floor (tuck)", value: "L-sit (Floor tuck)" },
@@ -387,6 +445,8 @@ const programDefaults: Record<string, { name: string; focus: string; exercises: 
                 name: "Band Hammer Curl",
                 type: "reps",
                 setCount: 3,
+                targetReps: 12,
+                equipment: ["Band"],
                 subs: [
                     { label: "Band Hammer Curl", value: "Band Hammer Curl" },
                     { label: "Neutral Grip Chin-up Negatives (no band)", value: "Chin-up Negatives (sub)" },
@@ -398,13 +458,15 @@ const programDefaults: Record<string, { name: string; focus: string; exercises: 
         name: "SABTU",
         focus: "Legs + Core",
         exercises: [
-            { name: "Pistol Squat", type: "reps", setCount: 4 },
-            { name: "Nordic Curl", type: "reps", setCount: 3 },
-            { name: "Single Leg Calf Raise", type: "reps", setCount: 3 },
+            { name: "Pistol Squat", type: "reps", setCount: 4, targetReps: 6, equipment: ["Floor"] },
+            { name: "Nordic Curl", type: "reps", setCount: 3, targetReps: 5, equipment: ["Floor"] },
+            { name: "Single Leg Calf Raise", type: "reps", setCount: 3, targetReps: 20, equipment: ["Floor"] },
             {
                 name: "Planche Lean",
                 type: "hold",
                 setCount: 3,
+                targetReps: 15,
+                equipment: ["Parallettes", "Floor"],
                 subs: [
                     { label: "Parallettes", value: "Planche Lean (Parallettes)" },
                     { label: "Floor (fist)", value: "Planche Lean (Floor)" },
@@ -416,11 +478,13 @@ const programDefaults: Record<string, { name: string; focus: string; exercises: 
         name: "MINGGU",
         focus: "Shoulders + Arms + Wrist Rehab",
         exercises: [
-            { name: "Pike Push-up (Feet Elevated)", type: "reps", setCount: 4 },
+            { name: "Pike Push-up (Feet Elevated)", type: "reps", setCount: 4, targetReps: 8, equipment: ["Floor"] },
             {
                 name: "Band Lateral Raise",
                 type: "reps",
                 setCount: 4,
+                targetReps: 15,
+                equipment: ["Band"],
                 subs: [
                     { label: "Band Lateral Raise", value: "Band Lateral Raise" },
                     { label: "Pike Push-up +1 set (no band)", value: "Pike Push-up (sub lateral)" },
@@ -430,42 +494,100 @@ const programDefaults: Record<string, { name: string; focus: string; exercises: 
                 name: "Band Curl",
                 type: "reps",
                 setCount: 3,
+                targetReps: 12,
+                equipment: ["Band"],
                 subs: [
                     { label: "Band Curl", value: "Band Curl" },
                     { label: "Chin-up Negatives (no band)", value: "Chin-up Negatives (sub curl)" },
                 ],
             },
-            { name: "Wrist Conditioning", type: "hold", setCount: 3 },
+            { name: "Wrist Conditioning", type: "hold", setCount: 3, targetReps: 30, equipment: ["Floor"] },
         ],
     },
 };
 
-// ─── Effective templates (custom names override defaults, structure stays) ───
+// ─── Effective templates (custom overrides defaults) ───
 const effectiveTemplates = computed(() => {
-    if (!customProgramNames.value) return programDefaults;
+    if (!customProgram.value) return programDefaults;
     const result: typeof programDefaults = {};
+
     for (const [day, template] of Object.entries(programDefaults)) {
-        const customDay = customProgramNames.value[day];
-        if (!customDay?.exercises) {
+        const custom = customProgram.value[day];
+        if (!custom?.exercises?.length) {
             result[day] = template;
             continue;
         }
         result[day] = {
             ...template,
-            exercises: template.exercises.map((def, idx) => {
-                const customName = customDay.exercises[idx]?.name;
-                if (!customName) return def;
-                // Update base name. Subs values use the new name as prefix where applicable.
-                return { ...def, name: customName };
+            exercises: custom.exercises.map((customEx: any, idx: number) => {
+                const def = template.exercises[idx];
+                if (!def) {
+                    // New exercise added via sidebar
+                    return {
+                        name: customEx.name,
+                        type: customEx.type || 'reps',
+                        setCount: customEx.setCount ?? customEx.sets ?? 3,
+                        targetReps: customEx.targetReps ?? 10,
+                        // equipment → subs: each equipment string becomes a sub option
+                        subs: customEx.equipment?.length > 0
+                            ? customEx.equipment.map((eq: string) => ({ label: eq, value: eq }))
+                            : undefined,
+                        equipment: customEx.equipment ?? [],
+                    };
+                }
+                return {
+                    ...def,
+                    name: customEx.name || def.name,
+                    type: customEx.type || def.type,
+                    setCount: customEx.setCount ?? customEx.sets ?? def.setCount,
+                    targetReps: customEx.targetReps ?? def.targetReps,
+                    // equipment from sidebar overrides subs if provided
+                    subs: customEx.equipment?.length > 0
+                        ? customEx.equipment.map((eq: string) => ({ label: eq, value: eq }))
+                        : def.subs,
+                    equipment: customEx.equipment ?? def.equipment ?? [],
+                };
             }),
         };
     }
     return result;
 });
 
-// ─── Computed ───
-const dayName = computed(() => effectiveTemplates.value[props.day]?.name || "REST DAY");
+const dayName  = computed(() => effectiveTemplates.value[props.day]?.name  || "REST DAY");
 const dayFocus = computed(() => effectiveTemplates.value[props.day]?.focus || "Recover");
+
+// ─── Open program editor ───
+function openProgramEditor() {
+    const template = effectiveTemplates.value[props.day];
+    if (!template) return;
+
+    sidebarExercises.value = template.exercises.map((def, idx) => ({
+        id: `ex-calist-${props.day}-${idx}`,
+        name: def.name,
+        sets: def.setCount,
+        targetReps: def.targetReps ?? 10,
+        // subs → equipment for sidebar (show sub options as equipment tags)
+        equipment: def.equipment ?? (def.subs ? def.subs.map(s => s.label) : []),
+        type: def.type,
+    }));
+    showProgramEditor.value = true;
+}
+
+// ─── When sidebar saves ───
+function onProgramSaved(updatedExercises: SidebarExercise[]) {
+    if (!customProgram.value) customProgram.value = {};
+    customProgram.value[props.day] = {
+        exercises: updatedExercises.map(ex => ({
+            name: ex.name,
+            setCount: ex.sets,
+            targetReps: ex.targetReps,
+            equipment: ex.equipment,
+            type: ex.type,
+        })),
+    };
+    initializeExercises();
+    showProgramEditor.value = false;
+}
 
 // ─── Helpers ───
 function effectiveName(ex: UIExercise): string {
@@ -496,10 +618,7 @@ function toggleNote(index: number) {
 // ─── Initialization ───
 function initializeExercises() {
     const template = effectiveTemplates.value[props.day];
-    if (!template) {
-        exercises.value = [];
-        return;
-    }
+    if (!template) { exercises.value = []; return; }
     exercises.value = template.exercises.map((def) => ({
         name: def.name,
         type: def.type,
@@ -508,6 +627,7 @@ function initializeExercises() {
         selectedSub: def.subs ? def.subs[0].value : undefined,
         note: "",
         showNote: false,
+        targetReps: def.targetReps,
     }));
 }
 
@@ -530,7 +650,6 @@ async function loadLastWeekData() {
                     exerciseRow = lastWeekRows.find((row: any) => row[4] === n);
                     if (exerciseRow) break;
                 }
-
                 if (exerciseRow) {
                     const sets = [exerciseRow[5], exerciseRow[6], exerciseRow[7], exerciseRow[8]]
                         .filter((s: any) => s && s !== "-" && s !== undefined);
@@ -553,10 +672,7 @@ async function loadCurrentSession() {
 
         if (currentRows.length > 0) {
             const firstRow = currentRows[0];
-            if (firstRow[11]) {
-                sessionNote.value = firstRow[11];
-                showSessionNote.value = true;
-            }
+            if (firstRow[11]) { sessionNote.value = firstRow[11]; showSessionNote.value = true; }
 
             exercises.value.forEach((exercise) => {
                 const possibleNames = allPossibleNames(exercise);
@@ -565,23 +681,18 @@ async function loadCurrentSession() {
                     savedRow = currentRows.find((row: any) => row[4] === n);
                     if (savedRow) break;
                 }
-
                 if (savedRow) {
                     if (exercise.subs) {
                         const matchedSub = exercise.subs.find(s => s.value === savedRow[4]);
                         if (matchedSub) exercise.selectedSub = matchedSub.value;
                     }
-
                     exercise.sets.forEach((set, idx) => {
-                        const stored = savedRow[5 + idx];
-                        set.value = parseSetValue(stored);
+                        set.value = parseSetValue(savedRow[5 + idx]);
                     });
-
-                    if (savedRow[10]) { exercise.note = savedRow[10]; }
+                    if (savedRow[10]) exercise.note = savedRow[10];
                 }
             });
-
-            if (currentRows[0][9] === "YES") { completed.value = true; }
+            if (currentRows[0][9] === "YES") completed.value = true;
         }
     } catch (error) {
         console.error("Failed to load current session:", error);
@@ -610,13 +721,8 @@ async function saveWorkout() {
         await secureFetch("/api/calist/save", {
             method: "POST",
             body: {
-                week: props.week,
-                day: dayName.value,
-                date: dateStr,
-                time: timeStr,
-                exercises: exercisePayload,
-                completed: completed.value,
-                sessionNote: sessionNote.value || "",
+                week: props.week, day: dayName.value, date: dateStr, time: timeStr,
+                exercises: exercisePayload, completed: completed.value, sessionNote: sessionNote.value || "",
             },
         });
 
@@ -636,14 +742,12 @@ async function saveWorkout() {
 }
 
 // ─── Lifecycle ───
-// Load custom names once on mount, then init. Day/week changes reuse loaded names.
 onMounted(async () => {
     try {
-        const res = await $fetch('/api/program/get?mode=calist') as { config: Record<string, { exercises: { name: string }[] }> | null };
-        if (res.config) customProgramNames.value = res.config;
-    } catch {
-        // Fall through to defaults
-    }
+        // BUG-04 FIX: pass ?mode=calist to avoid 400
+        const res = await $fetch('/api/program/get?mode=calist') as { config: any; start_date: string | null };
+        if (res.config) customProgram.value = res.config;
+    } catch { /* fall through to defaults */ }
 
     initializeExercises();
     if (dayName.value !== "REST DAY") {
@@ -674,8 +778,8 @@ watch(() => props.week, () => {
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 @keyframes bounceIn {
-    0% { transform: scale(0.9); opacity: 0; }
-    50% { transform: scale(1.05); }
+    0%   { transform: scale(0.9); opacity: 0; }
+    50%  { transform: scale(1.05); }
     100% { transform: scale(1); opacity: 1; }
 }
 .animate-bounce-in { animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }

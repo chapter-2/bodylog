@@ -1,15 +1,15 @@
 <template>
     <div class="inner border-x border-separator bg-white min-h-[60vh]">
-        
+
         <div class="p-8 border-b border-separator flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <span class="font-handwriting text-primary text-xl">Today's Session</span>
                 <h2 class="text-4xl md:text-5xl font-black uppercase mt-1">
                     {{ dayName }}
                 </h2>
-                <div class="flex items-center gap-2 mt-2">
+                <div class="flex items-center gap-2 mt-2 flex-wrap">
                     <p class="font-mono text-sm text-foreground-text">Focus: {{ dayFocus }}</p>
-                    
+
                     <button @click="showRules = true" class="text-xs font-bold bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-foreground-text flex items-center gap-1 transition-colors">
                         <Info class="w-3 h-3" />
                         <span>LOGGING RULES</span>
@@ -17,9 +17,21 @@
                 </div>
             </div>
 
-            <div v-if="lastSaved" class="px-4 py-2 border border-separator rounded-full bg-background flex items-center gap-2">
-                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                <span class="font-mono text-xs uppercase tracking-widest">Saved: {{ lastSaved }}</span>
+            <div class="flex items-center gap-3 flex-wrap">
+                <!-- ── EDIT PROGRAM BUTTON (BUG-04 + new feature) ── -->
+                <button
+                    v-if="isAuthenticated && exercises.length > 0"
+                    @click="openProgramEditor"
+                    class="flex items-center gap-2 px-4 py-2 border-2 border-separator rounded-xl font-bold text-xs uppercase tracking-widest text-foreground-text hover:border-primary hover:text-primary transition-all group"
+                >
+                    <Pencil class="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
+                    Edit Program
+                </button>
+
+                <div v-if="lastSaved" class="px-4 py-2 border border-separator rounded-full bg-background flex items-center gap-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    <span class="font-mono text-xs uppercase tracking-widest">Saved: {{ lastSaved }}</span>
+                </div>
             </div>
         </div>
 
@@ -36,7 +48,7 @@
         <form v-else @submit.prevent="saveWorkout" class="divide-y divide-separator">
 
             <div class="p-6 md:p-8 bg-[#fffef5] border-b border-yellow-200">
-                <button 
+                <button
                     type="button"
                     @click="showSessionNote = !showSessionNote"
                     class="text-sm font-bold text-foreground-primary hover:text-primary flex items-center gap-2 w-full transition-colors"
@@ -49,7 +61,7 @@
                 </button>
 
                 <div v-if="showSessionNote || sessionNote" class="mt-3">
-                    <textarea 
+                    <textarea
                         v-model="sessionNote"
                         rows="2"
                         placeholder="Kenapa hari ini beda? Cerita singkat tentang kondisi lo."
@@ -70,12 +82,20 @@
                 <div class="flex justify-between items-start mb-4 gap-4">
                     <div class="flex flex-col gap-1 w-full">
 
+                        <!-- Target reps hint (from program editor) -->
+                        <div v-if="exercise.targetReps && exercise.targetReps > 0" class="inline-flex items-center gap-1.5 w-fit mb-1">
+                            <span class="font-mono text-[10px] text-foreground-text/50 uppercase tracking-widest">Target:</span>
+                            <span class="font-mono text-[10px] font-bold text-primary px-1.5 py-0.5 bg-primary/10 rounded">
+                                {{ exercise.sets.length }}×{{ exercise.targetReps }} reps
+                            </span>
+                        </div>
+
                         <h4 class="text-2xl font-bold group-hover:text-primary transition-colors uppercase leading-tight">
                             {{ exercise.variants ? exercise.name : exercise.name }}
                         </h4>
 
-                        <!-- Variant radio buttons — only shown if exercise has variants -->
-                        <div v-if="exercise.variants" class="flex flex-wrap gap-2 mt-2">
+                        <!-- Variant radio buttons (from equipment in program editor) -->
+                        <div v-if="exercise.variants && exercise.variants.length > 0" class="flex flex-wrap gap-2 mt-2">
                             <label
                                 v-for="variant in exercise.variants"
                                 :key="variant"
@@ -97,8 +117,8 @@
                             </label>
                         </div>
 
-                        <!-- Per-exercise note toggle -->
-                        <button 
+                        <!-- Per-exercise note -->
+                        <button
                             type="button"
                             @click="toggleNote(exIdx)"
                             class="text-xs font-mono text-foreground-text/60 hover:text-primary flex items-center gap-1 w-fit mt-1"
@@ -109,7 +129,7 @@
                         </button>
 
                         <div v-if="exercise.showNote || exercise.note" class="mt-2">
-                            <input 
+                            <input
                                 v-model="exercise.note"
                                 type="text"
                                 placeholder="Kenapa ganti alat? Kenapa beban turun?"
@@ -122,8 +142,8 @@
                         <span class="font-mono text-xs border border-separator px-2 py-1 rounded bg-white whitespace-nowrap">
                             {{ exercise.sets.length }} SETS
                         </span>
-                        <a 
-                            :href="`https://www.youtube.com/results?search_query=${encodeURIComponent((exercise.selectedVariant || exercise.name) + ' form tutorial')}`" 
+                        <a
+                            :href="`https://www.youtube.com/results?search_query=${encodeURIComponent((exercise.selectedVariant || exercise.name) + ' form tutorial')}`"
                             target="_blank"
                             class="flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-600 border border-red-100 rounded hover:bg-red-600 hover:text-white hover:border-red-600 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                         >
@@ -203,28 +223,23 @@
                     <button @click="showRules = false" class="absolute top-4 right-4 text-foreground-text hover:text-red-500">
                         <X class="w-6 h-6" />
                     </button>
-                    
                     <h3 class="text-xl font-black uppercase mb-4 border-b-2 border-primary w-fit">Logging Rules</h3>
-                    
                     <div class="space-y-4 font-mono text-sm">
                         <div class="bg-blue-50 p-3 rounded border border-blue-100">
                             <div class="font-bold text-blue-800 mb-1">Dumbbells</div>
                             <p>Catat berat <strong>PER TANGAN</strong> (Satu sisi).</p>
-                            <p class="text-xs text-blue-600 mt-1">Ex: Curl pake 10kg kiri & 10kg kanan -> Tulis <strong>10</strong>.</p>
+                            <p class="text-xs text-blue-600 mt-1">Ex: Curl pake 10kg kiri & 10kg kanan → Tulis <strong>10</strong>.</p>
                         </div>
-                        
                         <div class="bg-green-50 p-3 rounded border border-green-100">
                             <div class="font-bold text-green-800 mb-1">Barbell / Smith</div>
                             <p>Catat <strong>TOTAL BERAT</strong> (Plate).</p>
-                            <p class="text-xs text-green-600 mt-1">Ex: Plate 10kg kiri/kanan -> Tulis <strong>20</strong>.</p>
+                            <p class="text-xs text-green-600 mt-1">Ex: Plate 10kg kiri/kanan → Tulis <strong>20</strong>.</p>
                         </div>
-
                         <div class="bg-orange-50 p-3 rounded border border-orange-100">
                             <div class="font-bold text-orange-800 mb-1">Cable / Machine</div>
                             <p>Catat <strong>ANGKA DI TUMPUKAN</strong>.</p>
                         </div>
                     </div>
-
                     <button @click="showRules = false" class="w-full mt-6 py-3 bg-foreground-primary text-white font-bold uppercase rounded hover:bg-primary transition-colors">
                         Got it
                     </button>
@@ -232,19 +247,38 @@
             </div>
         </transition>
 
+        <!-- ─── PROGRAM EDITOR SIDEBAR ─── -->
+        <ProgramEditorSidebar
+            :open="showProgramEditor"
+            mode="gym"
+            :day="props.day"
+            :exercises="sidebarExercises"
+            @close="showProgramEditor = false"
+            @saved="onProgramSaved"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
 import type { Exercise } from "~/types";
-import { Youtube, BedDouble, Check, Info, X, MessageSquare, ChevronDown } from "lucide-vue-next";
+import { Youtube, BedDouble, Check, Info, X, MessageSquare, ChevronDown, Pencil } from "lucide-vue-next";
 
 // ─── Extended UI types ───
 interface UIExercise extends Exercise {
-    variants?: string[];       
-    selectedVariant?: string;  
+    variants?: string[];
+    selectedVariant?: string;
     note?: string;
     showNote?: boolean;
+    targetReps?: number;   // from program editor
+}
+
+interface SidebarExercise {
+    id: string;
+    name: string;
+    sets: number;
+    targetReps: number;
+    equipment: string[];
+    type: 'reps' | 'hold';
 }
 
 // ─── Props / Emits ───
@@ -263,44 +297,117 @@ const showRules = ref(false);
 const sessionNote = ref("");
 const showSessionNote = ref(false);
 
-// ─── Custom program from DB (overrides defaults if set) ───
-const customProgram = ref<Record<string, { exercises: string[] }> | null>(null);
+// ─── Program editor state ───
+const showProgramEditor = ref(false);
+const sidebarExercises = ref<SidebarExercise[]>([]);
+
+// ─── Custom program from DB (overrides defaults) ───
+const customProgram = ref<Record<string, { exercises: any[] }> | null>(null);
 
 // ─── Program Defaults ───
-const programDefaults: Record<string, { name: string; focus: string; exercises: string[] }> = {
-    monday:    { name: "SENIN",  focus: "Back Width",           exercises: ["Weighted Pull-Up / Lat Pulldown", "Lat Pulldown (Close Grip)", "Straight Arm Pulldown", "Rear Delt Fly", "Hanging Leg Raise"] },
-    tuesday:   { name: "SELASA", focus: "Push (Chest/Shoulders)", exercises: ["Barbell Bench Press", "Overhead Press", "Incline Dumbbell Press", "Lateral Raise", "Tricep Pushdown", "Tricep Overhead Extension"] },
-    wednesday: { name: "RABU",   focus: "Legs",                 exercises: ["Leg Press / Squat", "Leg Curl", "Leg Extension", "Calf Raise", "Hanging Leg Raise"] },
-    friday:    { name: "JUMAT",  focus: "Back Thickness",       exercises: ["Pull-Up", "T-Bar Row / Barbell Row", "Seated Cable Row (Wide)", "Straight Arm Pulldown", "Lateral Raise", "Hammer Curl"] },
-    saturday:  { name: "SABTU",  focus: "Shoulders + Arms",     exercises: ["Lateral Raise", "Face Pull", "Barbell Curl", "Skull Crushers", "Hanging Knee Raise"] },
+const programDefaults: Record<string, { name: string; focus: string; exercises: { name: string; sets: number; targetReps: number; equipment: string[] }[] }> = {
+    monday:    { name: "SENIN",  focus: "Back Width",            exercises: [
+        { name: "Weighted Pull-Up / Lat Pulldown", sets: 4, targetReps: 8,  equipment: ["Pull-Up Bar", "Lat Machine"] },
+        { name: "Lat Pulldown (Close Grip)",        sets: 3, targetReps: 10, equipment: ["Cable"] },
+        { name: "Straight Arm Pulldown",            sets: 3, targetReps: 12, equipment: ["Cable"] },
+        { name: "Rear Delt Fly",                    sets: 3, targetReps: 15, equipment: ["Dumbbell", "Machine"] },
+        { name: "Hanging Leg Raise",               sets: 3, targetReps: 12, equipment: [] },
+    ]},
+    tuesday:   { name: "SELASA", focus: "Push (Chest/Shoulders)", exercises: [
+        { name: "Barbell Bench Press",         sets: 4, targetReps: 8,  equipment: ["Barbell", "Smith Machine"] },
+        { name: "Overhead Press",              sets: 3, targetReps: 8,  equipment: ["Barbell", "Dumbbell"] },
+        { name: "Incline Dumbbell Press",      sets: 3, targetReps: 10, equipment: ["Dumbbell"] },
+        { name: "Lateral Raise",               sets: 4, targetReps: 15, equipment: ["Dumbbell", "Cable"] },
+        { name: "Tricep Pushdown",             sets: 3, targetReps: 12, equipment: ["Cable"] },
+        { name: "Tricep Overhead Extension",   sets: 3, targetReps: 12, equipment: ["Dumbbell", "Cable"] },
+    ]},
+    wednesday: { name: "RABU",   focus: "Legs",                   exercises: [
+        { name: "Leg Press / Squat",   sets: 4, targetReps: 10, equipment: ["Machine", "Barbell"] },
+        { name: "Leg Curl",            sets: 3, targetReps: 12, equipment: ["Machine"] },
+        { name: "Leg Extension",       sets: 3, targetReps: 12, equipment: ["Machine"] },
+        { name: "Calf Raise",          sets: 4, targetReps: 15, equipment: ["Machine", "Barbell"] },
+        { name: "Hanging Leg Raise",   sets: 3, targetReps: 12, equipment: [] },
+    ]},
+    friday:    { name: "JUMAT",  focus: "Back Thickness",         exercises: [
+        { name: "Pull-Up",                      sets: 4, targetReps: 8,  equipment: ["Pull-Up Bar"] },
+        { name: "T-Bar Row / Barbell Row",      sets: 4, targetReps: 8,  equipment: ["Barbell", "T-Bar Machine"] },
+        { name: "Seated Cable Row (Wide)",      sets: 3, targetReps: 10, equipment: ["Cable"] },
+        { name: "Straight Arm Pulldown",        sets: 3, targetReps: 12, equipment: ["Cable"] },
+        { name: "Lateral Raise",                sets: 3, targetReps: 15, equipment: ["Dumbbell", "Cable"] },
+        { name: "Hammer Curl",                  sets: 3, targetReps: 12, equipment: ["Dumbbell", "Cable"] },
+    ]},
+    saturday:  { name: "SABTU",  focus: "Shoulders + Arms",       exercises: [
+        { name: "Lateral Raise",               sets: 4, targetReps: 15, equipment: ["Dumbbell", "Cable"] },
+        { name: "Face Pull",                   sets: 3, targetReps: 15, equipment: ["Cable"] },
+        { name: "Barbell Curl",                sets: 3, targetReps: 10, equipment: ["Barbell", "EZ Bar"] },
+        { name: "Skull Crushers",              sets: 3, targetReps: 10, equipment: ["EZ Bar", "Barbell"] },
+        { name: "Hanging Knee Raise",          sets: 3, targetReps: 12, equipment: [] },
+    ]},
 };
 
 // ─── Effective templates (custom overrides defaults) ───
 const effectiveTemplates = computed(() => {
     if (!customProgram.value) return programDefaults;
-    const result: typeof programDefaults = {};
+    const result = { ...programDefaults };
     for (const [day, template] of Object.entries(programDefaults)) {
         const custom = customProgram.value[day];
-        result[day] = {
-            ...template,
-            exercises: (custom?.exercises && custom.exercises.length > 0) ? custom.exercises : template.exercises,
-        };
+        if (custom?.exercises?.length > 0) {
+            result[day] = {
+                ...template,
+                exercises: custom.exercises.map((ex: any, idx: number) => ({
+                    name: ex.name || template.exercises[idx]?.name || '',
+                    sets: ex.sets ?? template.exercises[idx]?.sets ?? 3,
+                    targetReps: ex.targetReps ?? template.exercises[idx]?.targetReps ?? 10,
+                    equipment: ex.equipment ?? template.exercises[idx]?.equipment ?? [],
+                })),
+            };
+        }
     }
     return result;
 });
 
-// ─── Computed ───
-const dayName = computed(() => effectiveTemplates.value[props.day]?.name || "REST DAY");
+const dayName  = computed(() => effectiveTemplates.value[props.day]?.name  || "REST DAY");
 const dayFocus = computed(() => effectiveTemplates.value[props.day]?.focus || "Recover");
 
-// ─── Helpers ───
-function parseVariants(name: string): string[] | null {
-    if (!name.includes(" / ")) return null;
-    return name.split(" / ").map(v => v.trim());
+// ─── Open program editor ───
+function openProgramEditor() {
+    const template = effectiveTemplates.value[props.day];
+    if (!template) return;
+    sidebarExercises.value = template.exercises.map((ex, idx) => ({
+        id: `ex-${props.day}-${idx}-${ex.name.slice(0, 5)}`,
+        name: ex.name,
+        sets: ex.sets,
+        targetReps: ex.targetReps,
+        equipment: [...ex.equipment],
+        type: 'reps' as const,
+    }));
+    showProgramEditor.value = true;
 }
 
-function getSetCount(name: string): number {
-    return name.includes("Lateral Raise") || name.includes("Leg") || name.includes("Pull-Up") ? 4 : 3;
+// ─── When program is saved from sidebar ───
+function onProgramSaved(updatedExercises: SidebarExercise[]) {
+    // Update customProgram cache for this day
+    if (!customProgram.value) customProgram.value = {};
+    customProgram.value[props.day] = {
+        exercises: updatedExercises.map(ex => ({
+            name: ex.name,
+            sets: ex.sets,
+            targetReps: ex.targetReps,
+            equipment: ex.equipment,
+        })),
+    };
+    // Re-init exercises with new program
+    initializeExercises();
+    showProgramEditor.value = false;
+}
+
+// ─── Helpers ───
+function parseVariants(name: string, equipment: string[]): string[] | null {
+    // Equipment from program editor → become variants
+    if (equipment && equipment.length > 0) return equipment;
+    // Legacy: "/" separator in name
+    if (name.includes(" / ")) return name.split(" / ").map(v => v.trim());
+    return null;
 }
 
 function effectiveName(ex: UIExercise): string {
@@ -318,15 +425,16 @@ function initializeExercises() {
         exercises.value = [];
         return;
     }
-    exercises.value = template.exercises.map((name) => {
-        const variants = parseVariants(name);
+    exercises.value = template.exercises.map((ex) => {
+        const variants = parseVariants(ex.name, ex.equipment);
         return {
-            name,
-            variants,
+            name: ex.name,
+            variants: variants || undefined,
             selectedVariant: variants ? variants[0] : undefined,
-            sets: Array(getSetCount(name)).fill(null).map(() => ({ weight: 0, reps: 0 })),
+            sets: Array(ex.sets).fill(null).map(() => ({ weight: 0, reps: 0 })),
             note: "",
             showNote: false,
+            targetReps: ex.targetReps,
         };
     });
 }
@@ -337,28 +445,22 @@ async function loadLastWeekData() {
     try {
         if (dayName.value === "REST DAY") return;
         const { data } = await secureFetch(`/api/gym/get?day=${dayName.value}`);
-
         const lastWeekWorkouts = data.filter((row: any) => parseInt(row[0]) === props.week - 1);
         if (lastWeekWorkouts.length > 0) {
             const template = effectiveTemplates.value[props.day];
             const dataMap: Record<number, { sets: string[]; exerciseName: string }> = {};
-
-            template?.exercises.forEach((templateName, idx) => {
-                const variants = parseVariants(templateName);
-
+            template?.exercises.forEach((templateEx, idx) => {
+                const variants = parseVariants(templateEx.name, templateEx.equipment);
                 let exerciseRow: any = null;
                 if (variants) {
                     for (const v of variants) {
                         exerciseRow = lastWeekWorkouts.find((row: any) => row[4] === v);
                         if (exerciseRow) break;
                     }
-                    if (!exerciseRow) {
-                        exerciseRow = lastWeekWorkouts.find((row: any) => row[4] === templateName);
-                    }
+                    if (!exerciseRow) exerciseRow = lastWeekWorkouts.find((row: any) => row[4] === templateEx.name);
                 } else {
-                    exerciseRow = lastWeekWorkouts.find((row: any) => row[4] === templateName);
+                    exerciseRow = lastWeekWorkouts.find((row: any) => row[4] === templateEx.name);
                 }
-
                 if (exerciseRow) {
                     const sets = [exerciseRow[5], exerciseRow[6], exerciseRow[7], exerciseRow[8]]
                         .filter((s: any) => s && s !== "-" && s !== undefined);
@@ -375,50 +477,38 @@ async function loadCurrentSession() {
     try {
         if (dayName.value === "REST DAY") return;
         const { data } = await secureFetch(`/api/gym/get?day=${dayName.value}`);
-
         const currentSessionRows = data.filter((row: any) => parseInt(row[0]) === props.week);
         if (currentSessionRows.length > 0) {
             const firstRow = currentSessionRows[0];
-            if (firstRow[11]) {
-                sessionNote.value = firstRow[11];
-                showSessionNote.value = true;
-            }
-
+            if (firstRow[11]) { sessionNote.value = firstRow[11]; showSessionNote.value = true; }
             exercises.value.forEach((exercise) => {
                 const variants = exercise.variants;
-
                 let savedRow: any = null;
                 if (variants) {
                     for (const v of variants) {
                         savedRow = currentSessionRows.find((row: any) => row[4] === v);
                         if (savedRow) break;
                     }
-                    if (!savedRow) {
-                        savedRow = currentSessionRows.find((row: any) => row[4] === exercise.name);
-                    }
+                    if (!savedRow) savedRow = currentSessionRows.find((row: any) => row[4] === exercise.name);
                 } else {
                     savedRow = currentSessionRows.find((row: any) => row[4] === exercise.name);
                 }
-
                 if (savedRow) {
-                    if (variants && variants.includes(savedRow[4])) {
-                        exercise.selectedVariant = savedRow[4];
-                    }
+                    if (variants && variants.includes(savedRow[4])) exercise.selectedVariant = savedRow[4];
                     exercise.sets.forEach((set, idx) => {
                         const setString = savedRow[5 + idx];
                         if (setString && setString !== "-") {
                             const parts = setString.split("×");
                             if (parts.length === 2) {
                                 set.weight = parseFloat(parts[0].replace("kg", "").trim()) || 0;
-                                set.reps = parseFloat(parts[1].trim()) || 0;
+                                set.reps   = parseFloat(parts[1].trim()) || 0;
                             }
                         }
                     });
-                    if (savedRow[10]) { exercise.note = savedRow[10]; }
+                    if (savedRow[10]) exercise.note = savedRow[10];
                 }
             });
-
-            if (currentSessionRows[0][9] === "YES") { completed.value = true; }
+            if (currentSessionRows[0][9] === "YES") completed.value = true;
         }
     } catch (error) { console.error("Failed to load current session:", error); }
 }
@@ -427,35 +517,25 @@ async function loadCurrentSession() {
 async function saveWorkout() {
     if (dayName.value === "REST DAY") return;
     if (!isAuthenticated.value) { navigateTo("/login"); return; }
-
     saving.value = true;
     saveError.value = "";
-
     try {
         const now = new Date();
         const dateStr = now.toLocaleDateString("id-ID");
         const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-
         const exercisePayload = exercises.value.map(ex => ({
             name: effectiveName(ex),
             templateName: ex.name,
             sets: ex.sets,
             note: ex.note || "",
         }));
-
         await secureFetch("/api/gym/save", {
             method: "POST",
             body: {
-                week: props.week,
-                day: dayName.value,
-                date: dateStr,
-                time: timeStr,
-                exercises: exercisePayload,
-                completed: completed.value,
-                sessionNote: sessionNote.value || "",
+                week: props.week, day: dayName.value, date: dateStr, time: timeStr,
+                exercises: exercisePayload, completed: completed.value, sessionNote: sessionNote.value || "",
             },
         });
-
         lastSaved.value = `${dateStr} ${timeStr}`;
         emit("saved");
         completed.value = false;
@@ -472,16 +552,11 @@ async function saveWorkout() {
 }
 
 // ─── Lifecycle ───
-// Load custom program once on mount, then init exercises.
-// Day/week changes after that use the already-loaded custom program.
 onMounted(async () => {
     try {
-        const res = await $fetch('/api/program/get?mode=gym') as { config: Record<string, { exercises: string[] }> | null };
+        const res = await $fetch('/api/program/get?mode=gym') as { config: any; start_date: string | null };
         if (res.config) customProgram.value = res.config;
-    } catch {
-        // Fall through to defaults
-    }
-
+    } catch { /* fall through to defaults */ }
     initializeExercises();
     if (dayName.value !== "REST DAY") {
         await Promise.all([loadLastWeekData(), loadCurrentSession()]);
@@ -511,8 +586,8 @@ watch(() => props.week, () => {
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 @keyframes bounceIn {
-    0% { transform: scale(0.9); opacity: 0; }
-    50% { transform: scale(1.05); }
+    0%   { transform: scale(0.9); opacity: 0; }
+    50%  { transform: scale(1.05); }
     100% { transform: scale(1); opacity: 1; }
 }
 .animate-bounce-in { animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }

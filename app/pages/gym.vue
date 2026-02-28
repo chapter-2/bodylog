@@ -6,7 +6,7 @@
                 <div class="h-8 w-48 mx-auto mb-4 bg-separator border-2 border-border animate-pulse"></div>
                 <div class="h-16 w-64 mx-auto bg-separator border-2 border-border animate-pulse"></div>
             </div>
-            
+
             <div class="inner border-x border-separator bg-white p-8 md:p-16">
                 <div class="space-y-6">
                     <div v-for="i in 4" :key="i" class="border-2 border-separator p-6">
@@ -161,9 +161,6 @@
                         <button v-if="!isAuthenticated" @click="navigateTo('/login')" class="px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold uppercase hover:bg-foreground-primary transition-colors">
                             Login to Start
                         </button>
-                        <button v-else @click="initializeProgram" class="px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold uppercase hover:bg-foreground-primary transition-colors">
-                            Start Week 1
-                        </button>
                     </div>
                 </div>
             </div>
@@ -174,7 +171,11 @@
 <script setup lang="ts">
 import { Dumbbell, ChevronLeft, ChevronRight, History, Calendar, CheckCircle2, Eye } from "lucide-vue-next";
 
+// ── BUG-04 FIX: start date loaded from DB via program_config table.
+// No longer hardcoded to developer's personal date.
+// Defaults to today if not set (customer first run = week 1).
 const PROGRAM_START_DATE = ref<Date>(new Date());
+
 const { isAuthenticated, checkAuth, secureFetch } = useAuth();
 
 const isLoading = ref(true);
@@ -193,13 +194,13 @@ const days = [
 ];
 
 const programTemplates: Record<string, { name: string }> = {
-    monday: { name: "SENIN" },
-    tuesday: { name: "SELASA" },
-    wednesday: { name: "RABU" },
-    thursday: { name: "KAMIS" },
-    friday: { name: "JUMAT" },
-    saturday: { name: "SABTU" },
-    sunday: { name: "MINGGU" },
+    monday:    { name: "SENIN"  },
+    tuesday:   { name: "SELASA" },
+    wednesday: { name: "RABU"   },
+    thursday:  { name: "KAMIS"  },
+    friday:    { name: "JUMAT"  },
+    saturday:  { name: "SABTU"  },
+    sunday:    { name: "MINGGU" },
 };
 
 const calculatedWeek = computed(() => {
@@ -216,8 +217,11 @@ const todayDay = computed(() => {
 });
 
 const todayDayName = computed(() => {
-    const dayNames = { sunday: "Minggu", monday: "Senin", tuesday: "Selasa", wednesday: "Rabu", thursday: "Kamis", friday: "Jumat", saturday: "Sabtu" };
-    return dayNames[todayDay.value as keyof typeof dayNames];
+    const dayNames: Record<string, string> = {
+        sunday: "Minggu", monday: "Senin", tuesday: "Selasa",
+        wednesday: "Rabu", thursday: "Kamis", friday: "Jumat", saturday: "Sabtu",
+    };
+    return dayNames[todayDay.value];
 });
 
 const weekCompletionStatus = computed(() => {
@@ -247,6 +251,7 @@ async function loadHistory() {
             return weekB - weekA;
         });
 
+        // BUG-03 FIX: Deduplicate by (week, day) — one row per session, not per exercise
         const uniqueSessions = new Map<string, any[]>();
         const sessions = new Set<string>();
 
@@ -309,11 +314,13 @@ onMounted(async () => {
 
     try {
         if (isAuthenticated.value) {
-            const configRes = await secureFetch("/api/program/get").catch(() => ({}));
-            const sd = configRes?.data?.start_date_gym || configRes?.start_date_gym;
-            if (sd) {
-                PROGRAM_START_DATE.value = new Date(sd);
+            // ── BUG-04 FIX: load start_date from DB, not hardcoded constant.
+            // Pass ?mode=gym so the endpoint doesn't throw 400.
+            const configRes = await secureFetch("/api/program/get?mode=gym").catch(() => ({})) as any;
+            if (configRes?.start_date) {
+                PROGRAM_START_DATE.value = new Date(configRes.start_date);
             }
+            // If no start_date saved → defaults to today (new customer = week 1 ✅)
             await loadHistory();
         }
         initializeProgram();

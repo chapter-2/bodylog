@@ -46,6 +46,10 @@ export default defineNuxtConfig({
     display: "swap",
   },
 
+  // ── BUG-01 FIX: runtimeConfig.appPassword removed.
+  // Auth now uses username + password stored in the `users` SQLite table.
+  // server/api/auth/verify.post.ts is deprecated — do not call it.
+
   colorMode: {
     preference: "dark",
     fallback: "dark",

@@ -1,100 +1,154 @@
-# BodyLog - Minimalist Gym & Weight Tracker
+# BodyLog
 
-This repository contains a web application designed to track gym workouts and body weight progress. It is built with Nuxt 4 and uses Google Sheets as a backend database, ensuring you have full control and ownership of your data.
+Minimalist gym & body weight tracker dengan AI coaching. Self-hosted. Data di server kamu sendiri.
 
 ---
 
-### Features
+## Features
 
-- **Brutalist Design**: A focused, high-contrast interface designed for clarity and speed.
-- **Gym Logging**: Track exercises, sets, reps, and weights. The system automatically fetches your previous week's data for progressive overload.
-- **Bulk Tracker**: Weekly weight logging with automatic calculation of gained weight.
-- **AI Coach**: Export your workout data and automatically generate a prompt for Gemini AI to analyze your progressive overload and give nutrition advice.
-- **Google Sheets Integration**: All data is saved instantly to a private Google Sheet. The application handles table formatting and styling automatically.
-- **Mobile Responsive**: Fully optimized for mobile use with a custom navigation menu.
-- **Secure Access**: Simple password-based authentication to protect your logs.
+- **Gym Log** — 12-week barbell program, 5 hari/minggu. Progressive overload otomatis — data minggu lalu muncul sebagai referensi setiap session.
+- **Calisthenics Log** — Home program menuju planche. Reps & hold time tracking, substitusi alat, planche milestone tracker.
+- **Bulk Tracker** — Weekly weigh-in, progress log (start → current → gained), cardio reminder.
+- **AI Coach** — Export semua data ke CSV + auto-generate prompt untuk Gemini. Context-aware: AI baca semua notes kamu sebelum analisis.
+- **Dual Mode** — Switch antara Gym dan Calist kapan saja dari navbar.
+- **Program Editor** — Rename exercise sesuai alat atau nama yang kamu pakai.
+- **Self-Hosted** — Data tersimpan di SQLite lokal. Tidak ada cloud. Tidak ada langganan.
 
-### Setup Instructions
+---
 
-Follow these steps to configure this project for your own use.
+## Tech Stack
 
-#### Step 1: Get the Code
+- **Framework:** Nuxt 4 (Vue 3)
+- **Styling:** Tailwind CSS v4
+- **Database:** SQLite via `better-sqlite3`
+- **Auth:** Cookie-based, username + password, server-side sessions
+- **Deployment:** Docker + docker-compose
 
-- **Fork** or **Clone** this repository to your local machine.
+---
 
-#### Step 2: Configure Google Cloud & Service Account
+## Deployment
 
-You need a Service Account to allow the application to read and write to your Google Sheet.
+### Prerequisites
 
-1.  Go to the [Google Cloud Console](https://console.cloud.google.com/) and create a **New Project**.
-2.  Within the project, enable the **Google Sheets API**.
-3.  Create a **Service Account**:
-    - Navigate to `APIs & Services` > `Credentials`.
-    - Click `Create Credentials` > `Service account`.
-    - Give it a name (e.g., `bodylog-writer`), then click `Create and Continue`.
-4.  Generate a **JSON Key** for the Service Account:
-    - Click on the newly created Service Account.
-    - Go to the `Keys` tab > `Add Key` > `Create new key`.
-    - Choose the **JSON** format and click `Create`. A `.json` file will be downloaded. **Keep this file safe; its contents are secret.**
+- Docker dan docker-compose terinstall di server
 
-#### Step 3: Configure Google Sheets
+### 1. Clone Repository
 
-1.  Create a **new Google Sheet**.
-2.  **Share** your Sheet:
-    - Open the `.json` file you downloaded in Step 2, and copy the `client_email` address inside.
-    - In your Google Sheet, click `Share`, paste the email address, and grant it **Editor** access.
-3.  Get the **Spreadsheet ID**:
-    - It is found in the URL: `https://docs.google.com/spreadsheets/d/THIS_IS_THE_ID/edit...`
-4.  **Important**: Leave the sheet empty. The application will automatically create the necessary tabs (`GYM-SENIN`, `BULK`, etc.) and headers upon the first save.
-
-#### Step 4: Environment Variables
-
-Create a `.env` file in the root of your project and add the following variables. If deploying to Vercel, add these to your Project Settings > Environment Variables.
-
-```env
-# Your chosen password to access the app
-APP_PASSWORD=your_secure_password
-
-# The ID obtained in Step 3
-SPREADSHEET_ID=your_spreadsheet_id
-
-# Details from the JSON file obtained in Step 2
-GOOGLE_PROJECT_ID=your_project_id
-GOOGLE_CLIENT_EMAIL=your_service_account_email
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+```bash
+git clone https://github.com/szuryuu/bodylog.git
+cd bodylog
 ```
 
-> **Note:** When pasting the Private Key into Vercel or a `.env` file, ensure the entire key string is included.
+### 2. Configure Environment
 
-#### Step 5: Run Locally
+```bash
+cp .env.example .env
+```
 
-1.  Install dependencies:
-    ```bash
-    bun install
-    ```
-2.  Start the development server:
-    ```bash
-    bun run dev
-    ```
-3.  Open `http://localhost:3000` in your browser.
+Isi `.env`:
 
-### Deployment
+```env
+DB_PATH=/data
+```
 
-This application is optimized for deployment on **Vercel**.
+Itu saja. Tidak ada API key, tidak ada credential eksternal.
 
-1.  Push your code to a GitHub repository.
-2.  Import the project into Vercel.
-3.  In the Vercel deployment settings, ensure the **Environment Variables** (from Step 4) are correctly added.
-4.  Deploy.
+### 3. Build & Run
 
-### Customizing the Program
+```bash
+docker compose up -d --build
+```
 
-To change the workout routine (exercises, days, focus):
+App akan berjalan di `http://localhost:3000`.
 
-1.  Open `app/components/GymWorkoutForm.vue`.
-2.  Locate the `programTemplates` object.
-3.  Modify the exercises, set counts, or day names to match your specific training plan. The application will automatically adapt the Google Sheet columns to match your new structure.
+### 4. Claim Server (First Run)
+
+1. Buka URL app di browser
+2. Langsung masuk ke halaman login dengan mode **"CLAIM SERVER"**
+3. Buat username dan password — ini mengunci instance ke akun kamu
+4. Login selesai, mulai log
+
+> **Catatan:** Kalau kamu tidak langsung klaim server setelah deploy, siapa pun yang mengakses URL bisa membuat akun. Klaim segera setelah deploy.
+
+### 5. Configure Start Dates (Penting)
+
+Setelah login, buka **Settings → Program Start Dates** dan set tanggal mulai program.
+
+Week number dihitung otomatis dari tanggal ini. Kalau tidak diset, default ke hari deploy (Week 1 = hari ini).
+
+---
+
+## Update
+
+```bash
+git pull
+docker compose down
+docker compose up -d --build
+```
+
+Data di volume `bodylog_data` tidak akan hilang.
+
+---
+
+## Common Commands
+
+```bash
+# Start
+docker compose up -d
+
+# Stop
+docker compose down
+
+# Rebuild (setelah update kode)
+docker compose up -d --build
+
+# View logs
+docker logs bodylog -f
+
+# Restart
+docker compose restart
+```
+
+---
+
+## Data Backup
+
+Dari **Settings → Data → Download JSON Backup**.
+
+Atau manual:
+
+```bash
+docker cp bodylog:/data/bodylog.db ./bodylog_backup.db
+```
+
+---
+
+## Local Development
+
+```bash
+# Install dependencies
+bun install
+
+# Start dev server
+bun run dev
+```
+
+Buka `http://localhost:3000`.
+
+Database local: `./data/bodylog.db` (auto-created).
+
+---
+
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `DB_PATH` | `./data` | Directory untuk SQLite file |
+
+Hanya ini yang dibutuhkan. Tidak ada Google credentials, tidak ada Sheets API, tidak ada external services.
+
+---
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — lihat [LICENSE](LICENSE)
