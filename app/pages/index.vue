@@ -76,10 +76,10 @@
                     <p class="font-mono text-xs text-foreground-text opacity-60 mt-1">Log today's session</p>
                 </NuxtLink>
 
-                <NuxtLink to="/bulk" class="group p-5 border-2 border-separator bg-[#fcfbf7] hover:border-primary hover:bg-white transition-all">
+                <NuxtLink to="/weight" class="group p-5 border-2 border-separator bg-[#fcfbf7] hover:border-primary hover:bg-white transition-all">
                     <Scale class="w-6 h-6 text-primary mb-3 group-hover:scale-110 transition-transform" />
                     <p class="font-bold text-sm uppercase group-hover:text-primary transition-colors">Weigh In</p>
-                    <p class="font-mono text-xs text-foreground-text opacity-60 mt-1">Weekly bulk entry</p>
+                    <p class="font-mono text-xs text-foreground-text opacity-60 mt-1">Weekly weight entry</p>
                 </NuxtLink>
 
                 <NuxtLink to="/coach" class="group p-5 border-2 border-separator bg-[#fcfbf7] hover:border-primary hover:bg-white transition-all">
@@ -146,14 +146,14 @@
                     </div>
                 </div>
 
-                <!-- BULK TRACKER -->
+                <!-- WEIGHT TRACKER -->
                 <div class="p-8 md:p-10 group hover:bg-[#fcfbf7] transition-colors border-t-2 border-foreground-primary">
                     <div class="flex items-start gap-5">
                         <div class="w-14 h-14 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors">
                             <Scale class="w-7 h-7 text-primary group-hover:text-white transition-colors" :stroke-width="1.5" />
                         </div>
                         <div>
-                            <h3 class="text-2xl font-black uppercase text-foreground-primary mb-2 group-hover:text-primary transition-colors">Bulk Tracker</h3>
+                            <h3 class="text-2xl font-black uppercase text-foreground-primary mb-2 group-hover:text-primary transition-colors">Weight Tracker</h3>
                             <p class="font-mono text-sm text-foreground-text leading-relaxed opacity-80">
                                 Weekly weigh-in dengan progress log. Target +0.5–1kg/minggu.
                                 Cardio checklist dan strategi bulking terintegrasi.

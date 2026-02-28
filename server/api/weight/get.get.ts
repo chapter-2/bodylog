@@ -3,7 +3,7 @@ export default defineEventHandler(async () => {
     const db = getDb();
 
     const rows = db.prepare(
-      'SELECT week, date, weight, notes FROM bulk_entries ORDER BY week ASC'
+      'SELECT week, date, weight, notes FROM weight_entries ORDER BY week ASC'
     ).all() as { week: number; date: string; weight: number; notes: string }[];
 
     const header = ['Week', 'Date', 'Weight (kg)', 'Notes'];

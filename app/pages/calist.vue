@@ -176,8 +176,6 @@
 import { Activity, ChevronLeft, ChevronRight, History, Calendar, CheckCircle2, Eye } from "lucide-vue-next";
 
 // ── BUG-04 FIX: start date loaded from DB via program_config table.
-// No longer hardcoded to developer's personal date.
-// Defaults to today if not set (customer first run = week 1).
 const PROGRAM_START_DATE = ref<Date>(new Date());
 
 const { isAuthenticated, checkAuth, secureFetch } = useAuth();
@@ -302,18 +300,16 @@ watch(currentWeek, () => { initializeDay(); });
 
 onMounted(async () => {
     isLoading.value = true;
-    checkAuth();
-    await nextTick();
+    
+    // WAJIB DITUNGGU: Mencegah komponen render dengan state guest padahal cookie valid
+    await checkAuth();
 
     try {
         if (isAuthenticated.value) {
-            // ── BUG-04 FIX: load start_date from DB, not hardcoded constant.
-            // Pass ?mode=calist so the endpoint doesn't throw 400.
             const configRes = await secureFetch("/api/program/get?mode=calist").catch(() => ({})) as any;
             if (configRes?.start_date) {
                 PROGRAM_START_DATE.value = new Date(configRes.start_date);
             }
-            // If no start_date saved → defaults to today (new customer = week 1 ✅)
             await loadHistory();
         }
         initializeDay();

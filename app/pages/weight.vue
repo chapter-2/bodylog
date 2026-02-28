@@ -70,7 +70,7 @@
             </div>
 
             <div class="inner border-x border-separator bg-white border-b">
-                <BulkWeightForm @saved="handleSaved" />
+                <BulkWeightForm ref="bulkFormRef" @saved="handleSaved" />
             </div>
 
             <div class="inner border-x bg-[#fcfbf7] border-separator">
@@ -98,19 +98,29 @@
 
                     <div v-if="weightData.length > 0" class="space-y-2">
                         <div
-                            v-for="(entry, idx) in weightData.slice(1).reverse().slice(0, 10)"
+                            v-for="(entry, idx) in weightData.slice(1).reverse()"
                             :key="idx"
-                            class="flex items-center justify-between p-4 border-b border-separator last:border-0 hover:bg-white transition-colors"
+                            class="flex items-center justify-between p-4 border-b border-separator last:border-0 hover:bg-white transition-colors group"
                         >
                             <div class="flex items-center gap-4">
                                 <span class="font-bold font-mono text-foreground-primary bg-primary/10 px-2 py-1 rounded text-xs">W{{ entry[0] }}</span>
-                                <span class="text-sm text-foreground-text font-mono">{{ entry[1] }}</span>
+                                <span class="text-sm text-foreground-text font-mono hidden md:block">{{ entry[1] }}</span>
                             </div>
 
-                            <div class="text-right">
-                                <span class="font-black text-xl block">{{ entry[2] }} KG</span>
-
-                                <span v-if="entry[3]" class="text-xs text-foreground-text font-handwriting">{{ entry[3] }}</span>
+                            <div class="flex items-center gap-6">
+                                <div class="text-right">
+                                    <span class="font-black text-xl block">{{ entry[2] }} KG</span>
+                                    <span v-if="entry[3]" class="text-xs text-foreground-text font-handwriting">{{ entry[3] }}</span>
+                                </div>
+                                
+                                <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" v-if="isAuthenticated">
+                                    <button @click="triggerEdit(entry)" title="Edit" class="p-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 border border-blue-200 transition-colors">
+                                        <Pencil class="w-4 h-4" />
+                                    </button>
+                                    <button @click="deleteEntry(entry)" title="Delete" class="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100 border border-red-200 transition-colors">
+                                        <Trash2 class="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -127,12 +137,13 @@
 </template>
 
 <script setup lang="ts">
-import { Eye } from "lucide-vue-next";
+import { Eye, Pencil, Trash2 } from "lucide-vue-next";
 
 const { secureFetch, checkAuth, isAuthenticated } = useAuth();
 
 const isLoading = ref(true);
 const weightData = ref<any[]>([]);
+const bulkFormRef = ref<any>(null);
 
 const currentWeight = computed(() => {
     if (weightData.value.length <= 1) return 0;
@@ -153,7 +164,7 @@ const totalGained = computed(() => {
 
 async function loadWeightData() {
     try {
-        const { data } = await secureFetch("/api/bulk/get");
+        const { data } = await secureFetch("/api/weight/get");
         weightData.value = data as any[];
     } catch (error) {
         console.error("Failed to load weight data:", error);
@@ -164,10 +175,34 @@ function handleSaved() {
     loadWeightData();
 }
 
+function triggerEdit(entry: any) {
+    if (bulkFormRef.value) {
+        bulkFormRef.value.loadEditData(parseInt(entry[0]), parseFloat(entry[2]), entry[3] || '');
+    }
+}
+
+async function deleteEntry(entry: any) {
+    const weekNo = parseInt(entry[0]);
+    if (!confirm(`Are you sure you want to delete Week ${weekNo}?`)) return;
+    
+    try {
+        await secureFetch('/api/bulk/delete', {
+            method: 'DELETE',
+            body: { week: weekNo }
+        });
+        await loadWeightData();
+        
+        // Panggil re-render pada form agar week terupdate ke yang max
+        if (bulkFormRef.value && bulkFormRef.value.week === weekNo) {
+            handleSaved(); // memicu load logic di form
+        }
+    } catch (e: any) {
+        alert(e.data?.message || "Gagal menghapus data.");
+    }
+}
+
 onMounted(async () => {
     isLoading.value = true;
-    
-    // WAJIB DITUNGGU! Jangan biarkan kode lanjut sebelum tahu status sesinya.
     await checkAuth();
 
     try {

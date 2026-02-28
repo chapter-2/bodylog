@@ -9,27 +9,50 @@
             <form @submit.prevent="saveWeight" class="space-y-12 max-w-md">
                 <div class="group">
                     <label class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2 group-hover:text-primary transition-colors">
-                        Current Weight
+                        Current Weight (20 - 700 KG)
                     </label>
                     <div class="relative">
-                        <input v-model.number="weight" type="number" step="0.1" placeholder="00.0" class="input-pow text-6xl py-4" required />
+                        <input 
+                            v-model.number="weight" 
+                            @input="enforceWeightMax"
+                            @blur="enforceWeightMin"
+                            type="number" 
+                            step="0.1" 
+                            min="20" 
+                            max="700" 
+                            placeholder="00.0" 
+                            class="input-pow text-6xl py-4" 
+                            required 
+                        />
                         <span class="absolute right-0 bottom-4 text-2xl font-bold text-separator">KG</span>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-8">
                     <div class="group">
-                        <label class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2">Week</label>
-                        <input v-model.number="week" type="number" placeholder="1" class="input-pow" required />
+                        <label class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2">
+                            Week (1-1000)
+                        </label>
+                        <input 
+                            v-model.number="week" 
+                            @input="enforceWeekMax"
+                            @blur="enforceWeekMin"
+                            type="number" 
+                            min="1" 
+                            max="1000" 
+                            placeholder="1" 
+                            class="input-pow" 
+                            required 
+                        />
                     </div>
                     <div class="group">
-                        <label class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2">Note</label>
-                        <input v-model="notes" type="text" placeholder="Feeling..." class="input-pow" />
+                        <label class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2">Note (Max 150 chars)</label>
+                        <input v-model="notes" type="text" maxlength="150" placeholder="Feeling..." class="input-pow" />
                     </div>
                 </div>
 
                 <div class="pt-8">
-                    <button type="submit" :disabled="saving || isLoadingWeek" class="w-full h-16 bg-foreground-primary text-white rounded-xl font-bold text-xl hover:bg-primary transition-all hover:scale-[1.02] flex justify-center items-center gap-3 disabled:opacity-70 disabled:hover:scale-100">
+                    <button type="submit" :disabled="saving || isLoadingWeek" class="w-full h-16 bg-foreground-primary text-white rounded-xl font-bold text-xl hover:bg-primary transition-all hover:scale-[1.02] flex justify-center items-center gap-3 disabled:opacity-70 disabled:hover:scale-100 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]">
                         {{ saving ? "Saving..." : isLoadingWeek ? "Loading..." : "Log Weight" }}
                         <span v-if="!saving && !isLoadingWeek">→</span>
                     </button>
@@ -71,20 +94,52 @@ const isLoadingWeek = ref(true);
 const lastSaved = ref("");
 const saveError = ref("");
 
+defineExpose({
+    loadEditData: (editWeek: number, editWeight: number, editNotes: string) => {
+        week.value = editWeek;
+        weight.value = editWeight;
+        notes.value = editNotes;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+});
+
+// --- UX Validation Handlers ---
+function enforceWeightMax() {
+    if (weight.value !== null && weight.value > 700) {
+        weight.value = 700;
+    }
+}
+
+function enforceWeightMin() {
+    if (weight.value !== null && weight.value !== '' as any && weight.value < 20) {
+        weight.value = 20;
+    }
+}
+
+function enforceWeekMax() {
+    if (week.value !== null && week.value > 1000) {
+        week.value = 1000;
+    }
+}
+
+function enforceWeekMin() {
+    if (week.value !== null && week.value !== '' as any && week.value < 1) {
+        week.value = 1;
+    }
+}
+// -----------------------------
+
 onMounted(async () => {
-    const { isAuthenticated, secureFetch, checkAuth } = useAuth();
-    
-    isLoadingWeek.value = true;
-    await checkAuth(); // Mencegah race condition yang merusak urutan week
-    
+    const { isAuthenticated, secureFetch } = useAuth();
     if (isAuthenticated.value) {
         try {
+            isLoadingWeek.value = true;
             const res = await secureFetch("/api/bulk/get").catch(() => null);
             if (res && res.data && res.data.length > 0) {
                 const dataRows = res.data.slice(1);
                 if (dataRows.length > 0) {
                      const maxWeek = Math.max(...dataRows.map((row: any[]) => parseInt(row[0]) || 0));
-                     week.value = maxWeek + 1;
+                     week.value = Math.min(maxWeek + 1, 1000);
                 }
             }
         } catch (e) {
@@ -104,6 +159,12 @@ async function saveWeight() {
         navigateTo("/login");
         return;
     }
+
+    // Paksa validasi akhir sebelum menembak API jika user mencoba submit sebelum event blur terjadi
+    enforceWeightMax();
+    enforceWeightMin();
+    enforceWeekMax();
+    enforceWeekMin();
 
     if (!weight.value) return;
 
@@ -126,13 +187,25 @@ async function saveWeight() {
 
         lastSaved.value = `${dateStr}`;
         emit("saved");
-        week.value++;
+        
+        // Reset form ke minggu berikutnya
+        weight.value = null;
+        notes.value = "";
+        
+        const res = await secureFetch("/api/bulk/get").catch(() => null);
+        if (res && res.data && res.data.length > 0) {
+            const dataRows = res.data.slice(1);
+            if (dataRows.length > 0) {
+                const maxWeek = Math.max(...dataRows.map((row: any[]) => parseInt(row[0]) || 0));
+                week.value = Math.min(maxWeek + 1, 1000);
+            }
+        }
     } catch (error: any) {
         if (error.statusCode === 401) {
             saveError.value = "Session expired. Please login again.";
             setTimeout(() => navigateTo("/login"), 2000);
         } else {
-            saveError.value = error.message || "Failed to save.";
+            saveError.value = error.data?.message || error.message || "Failed to save.";
         }
     } finally {
         saving.value = false;

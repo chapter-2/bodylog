@@ -37,6 +37,20 @@
                             {{ isDownloading ? 'Exporting...' : 'Download JSON Backup' }}
                         </button>
                     </div>
+
+                    <div class="bg-white border-2 border-separator p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mt-8">
+    <h2 class="font-black uppercase text-xl mb-4 flex items-center gap-2 pb-4 border-b border-separator">
+        <Eye class="w-5 h-5 text-primary" />
+        Preferences
+    </h2>
+    <p class="font-mono text-sm text-foreground-text mb-6 leading-relaxed">
+        Ingin melihat kembali panduan awal penggunaan aplikasi? Reset UI onboarding di sini.
+    </p>
+    <button @click="handleResetTour" class="w-full py-4 border-2 border-separator text-foreground-primary font-bold text-sm uppercase tracking-wider hover:bg-[#fcfbf7] transition-colors flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]">
+        <RefreshCw class="w-5 h-5" />
+        Replay Onboarding Tour
+    </button>
+</div>
                 </div>
 
                 <div class="space-y-8">
@@ -126,9 +140,17 @@
 </template>
 
 <script setup lang="ts">
-import { User as UserIcon, Download, Lock, DatabaseBackup, CalendarDays, Save } from "lucide-vue-next";
+import { User as UserIcon, Download, Lock, DatabaseBackup, CalendarDays, Save, Eye, RefreshCw } from "lucide-vue-next";
 
 const { secureFetch, isAuthenticated, checkAuth, user } = useAuth();
+
+const { resetTour } = useMode();
+
+function handleResetTour() {
+    resetTour();
+    // Redirect ke home agar tour langsung terlihat dari awal
+    navigateTo('/'); 
+}
 
 // ─── Auth guard ───
 onMounted(async () => {

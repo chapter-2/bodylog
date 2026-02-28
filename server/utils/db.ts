@@ -38,13 +38,13 @@ function initializeTables(db: Database.Database): void {
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    CREATE TABLE IF NOT EXISTS bulk_entries (
+    CREATE TABLE IF NOT EXISTS weight_entries (
       id      INTEGER PRIMARY KEY AUTOINCREMENT,
       week    INTEGER NOT NULL UNIQUE,
       date    TEXT    NOT NULL,
       weight  REAL    NOT NULL,
       notes   TEXT    DEFAULT ''
-    );
+    );    
 
     CREATE TABLE IF NOT EXISTS gym_sessions (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,

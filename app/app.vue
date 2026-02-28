@@ -40,7 +40,7 @@
                         Calist Log
                     </NuxtLink>
                     <NuxtLink
-                        to="/bulk"
+                        to="/weight"
                         class="flex items-center gap-1 text-sm font-bold uppercase tracking-wide hover:text-primary transition-colors"
                     >
                         <span class="font-mono text-primary text-[10px] -mt-3">02</span>
@@ -134,7 +134,7 @@
                         <NuxtLink v-else to="/calist" @click="isMenuOpen = false" class="text-4xl font-black uppercase hover:text-primary transition-colors block">
                             <span class="text-primary text-sm font-mono mb-1 block">01</span>CALIST LOG
                         </NuxtLink>
-                        <NuxtLink to="/bulk" @click="isMenuOpen = false" class="text-4xl font-black uppercase hover:text-primary transition-colors block">
+                        <NuxtLink to="/weight" @click="isMenuOpen = false" class="text-4xl font-black uppercase hover:text-primary transition-colors block">
                             <span class="text-primary text-sm font-mono mb-1 block">02</span>WEIGH IN
                         </NuxtLink>
                         <NuxtLink to="/coach" @click="isMenuOpen = false" class="text-4xl font-black uppercase hover:text-primary transition-colors block text-primary">
