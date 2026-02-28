@@ -84,5 +84,44 @@ function initializeTables(db: Database.Database): void {
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    -- NEW: Cardio Sessions Table
+    CREATE TABLE IF NOT EXISTS cardio_sessions (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      week          INTEGER NOT NULL,
+      day           TEXT    NOT NULL,
+      date          TEXT    NOT NULL,
+      type          TEXT    NOT NULL,
+      duration_min  INTEGER DEFAULT 0,
+      distance_km   REAL    DEFAULT 0,
+      notes         TEXT    DEFAULT '',
+      UNIQUE(week, day, type)
+    );
+
+    -- NEW: Custom Program Relational Tables (GAP-04)
+    CREATE TABLE IF NOT EXISTS custom_programs (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL,
+      name       TEXT    NOT NULL,
+      created_at TEXT    DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS custom_days (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      program_id INTEGER NOT NULL,
+      day_name   TEXT    NOT NULL,
+      sort_order INTEGER NOT NULL,
+      FOREIGN KEY(program_id) REFERENCES custom_programs(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS custom_exercises (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      day_id        INTEGER NOT NULL,
+      exercise_name TEXT    NOT NULL,
+      target_sets   INTEGER DEFAULT 3,
+      sort_order    INTEGER NOT NULL,
+      FOREIGN KEY(day_id) REFERENCES custom_days(id) ON DELETE CASCADE
+    );
   `);
 }

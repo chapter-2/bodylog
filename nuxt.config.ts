@@ -46,10 +46,6 @@ export default defineNuxtConfig({
     display: "swap",
   },
 
-  runtimeConfig: {
-    appPassword: process.env.APP_PASSWORD,
-  },
-
   colorMode: {
     preference: "dark",
     fallback: "dark",
