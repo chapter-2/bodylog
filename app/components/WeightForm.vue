@@ -68,9 +68,14 @@
             <div class="absolute top-0 right-0 p-32 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
             <div class="relative z-10">
                 <Notebook class="w-15 h-15 text-primary mb-6" />
-                <h3 class="text-2xl font-bold mb-4 text-foreground-primary">Bulking Strategy</h3>
+                <h3 class="text-2xl font-bold mb-4 text-foreground-primary">
+                    {{ props.goal === 'cut' ? 'Cutting Strategy' : props.goal === 'maintain' ? 'Maintenance Strategy' : 'Bulking Strategy' }}
+                </h3>
+                
                 <p class="font-mono text-sm leading-relaxed mb-8 text-foreground-text">
-                    If scale weight stalls for >2 weeks, increase daily intake by <strong>200-300 kcal</strong>. Focus on clean carbs pre/post workout.
+                    <span v-if="props.goal === 'cut'">If scale weight stalls for >2 weeks, decrease daily intake by <strong>200-300 kcal</strong> or add cardio. Focus on high protein to preserve muscle mass.</span>
+                    <span v-else-if="props.goal === 'maintain'">Monitor your average weight. Adjust calories slightly if it consistently trends up or down by more than 1kg from baseline.</span>
+                    <span v-else>If scale weight stalls for >2 weeks, increase daily intake by <strong>200-300 kcal</strong>. Focus on clean carbs pre/post workout.</span>
                 </p>
 
                 <div v-if="lastSaved" class="border-t border-separator pt-8">
@@ -84,6 +89,11 @@
 
 <script setup lang="ts">
 import { Notebook } from "lucide-vue-next";
+
+const props = defineProps({
+    goal: { type: String, default: 'bulk' }
+});
+
 const emit = defineEmits(["saved"]);
 
 const week = ref(1);
@@ -94,47 +104,38 @@ const isLoadingWeek = ref(true);
 const lastSaved = ref("");
 const saveError = ref("");
 
+// STATE BARU: Menyimpan tanggal asli agar tidak ter-overwrite saat edit
+const originalDate = ref(""); 
+
 defineExpose({
-    loadEditData: (editWeek: number, editWeight: number, editNotes: string) => {
+    loadEditData: (editWeek: number, editWeight: number, editNotes: string, editDate: string) => {
         week.value = editWeek;
         weight.value = editWeight;
         notes.value = editNotes;
+        originalDate.value = editDate; // Simpan tanggal aslinya
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 });
 
-// --- UX Validation Handlers ---
 function enforceWeightMax() {
-    if (weight.value !== null && weight.value > 700) {
-        weight.value = 700;
-    }
+    if (weight.value !== null && weight.value > 700) weight.value = 700;
 }
-
 function enforceWeightMin() {
-    if (weight.value !== null && weight.value !== '' as any && weight.value < 20) {
-        weight.value = 20;
-    }
+    if (weight.value !== null && weight.value !== '' as any && weight.value < 20) weight.value = 20;
 }
-
 function enforceWeekMax() {
-    if (week.value !== null && week.value > 1000) {
-        week.value = 1000;
-    }
+    if (week.value !== null && week.value > 1000) week.value = 1000;
 }
-
 function enforceWeekMin() {
-    if (week.value !== null && week.value !== '' as any && week.value < 1) {
-        week.value = 1;
-    }
+    if (week.value !== null && week.value !== '' as any && week.value < 1) week.value = 1;
 }
-// -----------------------------
 
 onMounted(async () => {
     const { isAuthenticated, secureFetch } = useAuth();
     if (isAuthenticated.value) {
         try {
             isLoadingWeek.value = true;
-            const res = await secureFetch("/api/bulk/get").catch(() => null);
+            const res = await secureFetch("/api/weight/get").catch(() => null);
             if (res && res.data && res.data.length > 0) {
                 const dataRows = res.data.slice(1);
                 if (dataRows.length > 0) {
@@ -160,7 +161,6 @@ async function saveWeight() {
         return;
     }
 
-    // Paksa validasi akhir sebelum menembak API jika user mencoba submit sebelum event blur terjadi
     enforceWeightMax();
     enforceWeightMin();
     enforceWeekMax();
@@ -172,10 +172,10 @@ async function saveWeight() {
     saveError.value = "";
 
     try {
-        const now = new Date();
-        const dateStr = now.toLocaleDateString("id-ID");
+        // LOGIC BARU: Gunakan tanggal asli jika sedang edit, atau tanggal hari ini jika input baru
+        const dateStr = originalDate.value || new Date().toLocaleDateString("id-ID");
 
-        await secureFetch("/api/bulk/save", {
+        await secureFetch("/api/weight/save", {
             method: "POST",
             body: {
                 week: week.value,
@@ -188,11 +188,12 @@ async function saveWeight() {
         lastSaved.value = `${dateStr}`;
         emit("saved");
         
-        // Reset form ke minggu berikutnya
+        // Reset form
         weight.value = null;
         notes.value = "";
+        originalDate.value = ""; // Reset tanggal aslinya
         
-        const res = await secureFetch("/api/bulk/get").catch(() => null);
+        const res = await secureFetch("/api/weight/get").catch(() => null);
         if (res && res.data && res.data.length > 0) {
             const dataRows = res.data.slice(1);
             if (dataRows.length > 0) {

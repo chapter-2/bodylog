@@ -26,7 +26,7 @@
                         <span class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 300ms"></span>
                     </div>
                     <span class="font-mono text-xs uppercase tracking-widest text-white font-bold">
-                        LOADING BULK DATA
+                        LOADING WEIGHT DATA
                     </span>
                 </div>
             </div>
@@ -39,7 +39,7 @@
                         <Eye class="w-5 h-5 text-yellow-600 shrink-0" />
                         <div>
                             <p class="font-bold text-yellow-900 text-sm">PREVIEW MODE</p>
-                            <p class="text-xs text-yellow-700 font-mono">Login to save your weight & track bulk progress</p>
+                            <p class="text-xs text-yellow-700 font-mono">Login to save your weight & track your progress</p>
                         </div>
                     </div>
                     <NuxtLink 
@@ -51,26 +51,33 @@
                 </div>
             </div>
 
-            <div class="inner border-x bg-white py-16 md:py-24 border-b border-separator relative overflow-hidden">
+            <div class="inner border-x bg-white py-12 md:py-20 border-b border-separator relative overflow-hidden">
                 <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none">
-                    <span class="text-[15rem] font-black font-sans">BULK</span>
+                    <span class="text-[12rem] md:text-[15rem] font-black font-sans">{{ currentGoalConfig.bgText }}</span>
                 </div>
 
                 <div class="relative z-10 text-center">
                     <span class="font-handwriting text-xl text-primary mb-2 block -rotate-1">
                         Tracking Progress
                     </span>
-                    <h1 class="text-5xl md:text-7xl font-black uppercase text-foreground-primary">
+                    <h1 class="text-5xl md:text-7xl font-black uppercase text-foreground-primary mb-6">
                         Weigh In
                     </h1>
-                    <p class="font-mono text-sm mt-4 text-foreground-text opacity-70 max-w-lg mx-auto">
-                        Target: +0.5-1KG per week. Eat big to get big.
+
+                    <div class="flex justify-center mb-6 gap-2">
+                        <button @click="weightGoal = 'bulk'" :class="weightGoal === 'bulk' ? 'bg-primary text-white border-primary shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5' : 'bg-white text-foreground-text border-separator hover:bg-gray-50 hover:text-foreground-primary'" class="px-4 py-2 border-2 font-bold uppercase text-xs transition-all">Bulk</button>
+                        <button @click="weightGoal = 'cut'" :class="weightGoal === 'cut' ? 'bg-primary text-white border-primary shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5' : 'bg-white text-foreground-text border-separator hover:bg-gray-50 hover:text-foreground-primary'" class="px-4 py-2 border-2 font-bold uppercase text-xs transition-all">Cut</button>
+                        <button @click="weightGoal = 'maintain'" :class="weightGoal === 'maintain' ? 'bg-primary text-white border-primary shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5' : 'bg-white text-foreground-text border-separator hover:bg-gray-50 hover:text-foreground-primary'" class="px-4 py-2 border-2 font-bold uppercase text-xs transition-all">Maintain</button>
+                    </div>
+
+                    <p class="font-mono text-sm text-foreground-text opacity-80 max-w-lg mx-auto">
+                        {{ currentGoalConfig.subtitle }}
                     </p>
                 </div>
             </div>
 
             <div class="inner border-x border-separator bg-white border-b">
-                <BulkWeightForm ref="bulkFormRef" @saved="handleSaved" />
+                <WeightForm ref="weightFormRef" :goal="weightGoal" @saved="handleSaved" />
             </div>
 
             <div class="inner border-x bg-[#fcfbf7] border-separator">
@@ -83,12 +90,15 @@
                         <span class="font-mono text-xs uppercase tracking-widest text-primary block mb-2 font-bold">Current</span>
                         <span class="text-3xl md:text-4xl font-black text-primary">{{ currentWeight }}</span>
                     </div>
+
                     <div class="p-8 text-center">
-                        <span class="font-mono text-xs uppercase tracking-widest text-foreground-text block mb-2">Gained</span>
-                        <span class="text-3xl md:text-4xl font-black text-foreground-primary">
-                            {{ totalGained > 0 ? "+" : "" }}{{ totalGained }}
+                        <span class="font-mono text-xs uppercase tracking-widest text-foreground-text block mb-2">Change</span>
+                        <span class="text-3xl md:text-4xl font-black text-foreground-primary" :class="{'text-red-500': (Number(totalChange) > 0 && weightGoal === 'cut') || (Number(totalChange) < 0 && weightGoal === 'bulk')}">
+                            {{ Number(totalChange) > 0 ? "+" : "" }}{{ totalChange }}
                         </span>
                     </div>
+
+
                 </div>
 
                 <div class="p-8 md:p-12">
@@ -143,7 +153,16 @@ const { secureFetch, checkAuth, isAuthenticated } = useAuth();
 
 const isLoading = ref(true);
 const weightData = ref<any[]>([]);
-const bulkFormRef = ref<any>(null);
+const weightFormRef = ref<any>(null);
+
+// Menyimpan target utama user di cookie agar tidak hilang saat direfresh
+const weightGoal = useCookie('weight_goal', { default: () => 'bulk', maxAge: 60 * 60 * 24 * 365 });
+
+const currentGoalConfig = computed(() => {
+    if (weightGoal.value === 'cut') return { subtitle: 'Target: -0.5KG per week. Caloric deficit is king.', bgText: 'CUT' };
+    if (weightGoal.value === 'maintain') return { subtitle: 'Target: Keep it steady. Eat at maintenance calories.', bgText: 'MAINTAIN' };
+    return { subtitle: 'Target: +0.5-1KG per week. Eat big to get big.', bgText: 'BULK' };
+});
 
 const currentWeight = computed(() => {
     if (weightData.value.length <= 1) return 0;
@@ -155,7 +174,7 @@ const startWeight = computed(() => {
     return weightData.value[1]?.[2] || "-";
 });
 
-const totalGained = computed(() => {
+const totalChange = computed(() => {
     if (weightData.value.length <= 1) return 0;
     const start = parseFloat(weightData.value[1]?.[2]) || 0;
     const current = parseFloat(currentWeight.value) || 0;
@@ -176,8 +195,9 @@ function handleSaved() {
 }
 
 function triggerEdit(entry: any) {
-    if (bulkFormRef.value) {
-        bulkFormRef.value.loadEditData(parseInt(entry[0]), parseFloat(entry[2]), entry[3] || '');
+    if (weightFormRef.value) {
+        // PERBAIKAN: Kirim argumen ke-4 yaitu entry[1] (Tanggal)
+        weightFormRef.value.loadEditData(parseInt(entry[0]), parseFloat(entry[2]), entry[3] || '', entry[1]);
     }
 }
 
@@ -186,15 +206,14 @@ async function deleteEntry(entry: any) {
     if (!confirm(`Are you sure you want to delete Week ${weekNo}?`)) return;
     
     try {
-        await secureFetch('/api/bulk/delete', {
+        await secureFetch('/api/weight/delete', {
             method: 'DELETE',
             body: { week: weekNo }
         });
         await loadWeightData();
         
-        // Panggil re-render pada form agar week terupdate ke yang max
-        if (bulkFormRef.value && bulkFormRef.value.week === weekNo) {
-            handleSaved(); // memicu load logic di form
+        if (weightFormRef.value && weightFormRef.value.week === weekNo) {
+            handleSaved();
         }
     } catch (e: any) {
         alert(e.data?.message || "Gagal menghapus data.");
@@ -210,7 +229,7 @@ onMounted(async () => {
             await loadWeightData();
         }
     } catch (error) {
-        console.error("Error loading bulk data:", error);
+        console.error("Error loading weight data:", error);
     } finally {
         isLoading.value = false;
     }
