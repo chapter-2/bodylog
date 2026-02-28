@@ -8,31 +8,35 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event);
     const { week, date, weight, notes } = body;
 
-    if (!week || !date || weight === undefined) {
+    // Validasi input
+    if (week === undefined || !date || weight === undefined) {
         throw createError({
             statusCode: 400,
             message: "Missing required fields (week, date, weight)",
         });
     }
 
-    const db = getDb();
-
     try {
-        db.prepare(`
+        const db = getDb();
+        
+        const stmt = db.prepare(`
             INSERT INTO bulk_entries (week, date, weight, notes)
             VALUES (?, ?, ?, ?)
             ON CONFLICT(week) DO UPDATE SET
                 date = excluded.date,
                 weight = excluded.weight,
                 notes = excluded.notes
-        `).run(week, date, weight, notes || "");
+        `);
+
+        // Eksekusi statement
+        stmt.run(week, date, weight, notes || "");
 
         return { success: true };
     } catch (error: any) {
         console.error("Failed to save bulk entry:", error);
         throw createError({
             statusCode: 500,
-            message: "Database error during save",
+            message: `Database error during save: ${error.message}`,
         });
     }
 });

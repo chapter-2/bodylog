@@ -125,12 +125,6 @@ Sebelum push ke production, klarifikasi: revenue split, customer relationship, e
 
 ### 6.1 Kritis (Blocking untuk Production)
 
-**[BUG-01] `APP_PASSWORD` env var adalah dead code**
-- Sebelumnya: auth pakai single password dari env
-- Sekarang: auth pakai username + password + sessions table
-- Problem: `nuxt.config.ts` masih punya `runtimeConfig.appPassword`, `verify.post.ts` masih ada, `docker-compose.yml` masih pass `NUXT_APP_PASSWORD`, `.env.example` masih show `APP_PASSWORD=...`
-- Fix: Hapus semua referensi APP_PASSWORD. Update `.env.example` jadi hanya butuh `DB_PATH`. Update `docker-compose.yml`.
-
 **[BUG-02] `BulkWeightForm.vue` — week selalu mulai dari 1**
 - `week = ref(1)` — tidak baca last saved week dari DB on mount
 - User harus manual ketik week number yang benar setiap buka halaman

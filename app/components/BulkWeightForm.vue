@@ -29,9 +29,9 @@
                 </div>
 
                 <div class="pt-8">
-                    <button type="submit" :disabled="saving" class="w-full h-16 bg-foreground-primary text-white rounded-xl font-bold text-xl hover:bg-primary transition-all hover:scale-[1.02] flex justify-center items-center gap-3 disabled:opacity-70 disabled:hover:scale-100">
-                        {{ saving ? "Saving..." : "Log Weight" }}
-                        <span v-if="!saving">→</span>
+                    <button type="submit" :disabled="saving || isLoadingWeek" class="w-full h-16 bg-foreground-primary text-white rounded-xl font-bold text-xl hover:bg-primary transition-all hover:scale-[1.02] flex justify-center items-center gap-3 disabled:opacity-70 disabled:hover:scale-100">
+                        {{ saving ? "Saving..." : isLoadingWeek ? "Loading..." : "Log Weight" }}
+                        <span v-if="!saving && !isLoadingWeek">→</span>
                     </button>
                 </div>
 
@@ -67,21 +67,33 @@ const week = ref(1);
 const weight = ref<number | null>(null);
 const notes = ref("");
 const saving = ref(false);
+const isLoadingWeek = ref(true);
 const lastSaved = ref("");
 const saveError = ref("");
 
 onMounted(async () => {
-    const { isAuthenticated, secureFetch } = useAuth();
+    const { isAuthenticated, secureFetch, checkAuth } = useAuth();
+    
+    isLoadingWeek.value = true;
+    await checkAuth(); // Mencegah race condition yang merusak urutan week
+    
     if (isAuthenticated.value) {
         try {
             const res = await secureFetch("/api/bulk/get").catch(() => null);
             if (res && res.data && res.data.length > 0) {
-                const maxWeek = Math.max(...res.data.map((row: any[]) => parseInt(row[0]) || 1));
-                week.value = maxWeek + 1;
+                const dataRows = res.data.slice(1);
+                if (dataRows.length > 0) {
+                     const maxWeek = Math.max(...dataRows.map((row: any[]) => parseInt(row[0]) || 0));
+                     week.value = maxWeek + 1;
+                }
             }
         } catch (e) {
             console.error("Failed to auto-detect week", e);
+        } finally {
+            isLoadingWeek.value = false;
         }
+    } else {
+        isLoadingWeek.value = false;
     }
 });
 
