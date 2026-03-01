@@ -1,278 +1,41 @@
 <template>
     <div class="inner border-x border-separator bg-white min-h-[60vh]">
-
-        <div class="p-8 border-b border-separator flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-                <span class="font-handwriting text-primary text-xl">Today's Session</span>
-                <h2 class="text-4xl md:text-5xl font-black uppercase mt-1">
-                    {{ dayName }}
-                </h2>
-                <div class="flex items-center gap-2 mt-2 flex-wrap">
-                    <p class="font-mono text-sm text-foreground-text">Focus: {{ dayFocus }}</p>
-
-                    <button
-                        type="button"
-                        @click="showRules = true"
-                        class="text-xs font-bold bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-foreground-text flex items-center gap-1 transition-colors"
-                    >
-                        <Info class="w-3 h-3" />
-                        <span>LOGGING RULES</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-3 flex-wrap">
-                <button
-                    id="tour-edit-btn"
-                    v-if="exercises.length > 0"
-                    @click="handleEditClick"
-                    class="flex items-center gap-2 px-4 py-2 border-2 border-separator rounded-xl font-bold text-xs uppercase tracking-widest text-foreground-text hover:border-primary hover:text-primary transition-all group"
-                >
-                    <Lock v-if="!isAuthenticated" class="w-4 h-4 opacity-50" />
-                    <Settings2 v-else class="w-4 h-4 group-hover:rotate-90 transition-transform" />
-                    <span class="hidden md:inline">Edit Program</span>
-                    <span class="md:hidden">Edit</span>
-                </button>
-
-                <div v-if="lastSaved" class="px-4 py-2 border border-separator rounded-full bg-background flex items-center gap-2">
-                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    <span class="font-mono text-xs uppercase tracking-widest">Saved: {{ lastSaved }}</span>
-                </div>
-            </div>
-        </div>
-
-        <div v-if="exercises.length === 0" class="flex flex-col items-center justify-center py-24 text-center p-8">
-            <div class="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6 text-primary">
-                <BedDouble class="w-10 h-10" />
-            </div>
-            <h3 class="text-2xl font-bold uppercase mb-2">Rest & Recover</h3>
-            <p class="font-mono text-foreground-text opacity-60 max-w-md">
-                No workouts scheduled for today. Take a break, eat well, and get ready for the next grind!
-            </p>
-        </div>
-
-        <form v-else @submit.prevent="saveWorkout" class="divide-y divide-separator">
-
-            <div class="p-6 md:p-8 bg-[#fffef5] border-b border-yellow-200">
-                <button
-                    type="button"
-                    @click="showSessionNote = !showSessionNote"
-                    class="text-sm font-bold text-foreground-primary hover:text-primary flex items-center gap-2 w-full transition-colors"
-                >
-                    <MessageSquare class="w-4 h-4 text-yellow-600" />
-                    <span>Session Notes</span>
-                    <span v-if="sessionNote" class="text-xs font-mono text-primary ml-auto">Has note ✓</span>
-                    <span v-else class="text-xs font-mono text-foreground-text/40 ml-auto">e.g. kondisi tubuh, energy level</span>
-                    <ChevronDown class="w-4 h-4 transition-transform" :class="{ 'rotate-180': showSessionNote }" />
-                </button>
-
-                <div v-if="showSessionNote || sessionNote" class="mt-3">
-                    <textarea
-                        v-model="sessionNote"
-                        rows="2"
-                        placeholder="Gimana kondisi hari ini? Wrist oke? Energi gimana?"
-                        class="w-full text-sm font-mono bg-yellow-50 border border-yellow-300 rounded p-3 text-foreground-text focus:outline-none focus:border-yellow-500 placeholder:text-gray-400 resize-none"
-                    ></textarea>
-                    <p class="text-xs font-mono text-foreground-text/40 mt-1">
-                        AI Coach baca ini untuk ngerti konteks lo hari ini.
-                    </p>
-                </div>
-            </div>
-
-            <div
+        <WorkoutHeader
+            :day-name="dayName"
+            :day-focus="dayFocus"
+            :last-saved="lastSaved"
+            :is-authenticated="isAuthenticated"
+            :has-exercises="exercises.length > 0"
+            @open-rules="showRules = true"
+            @edit-program="handleEditClick"
+        />
+        <RestDayState v-if="exercises.length === 0" />
+        <form
+            v-else
+            @submit.prevent="saveWorkout"
+            class="divide-y divide-separator"
+        >
+            <SessionNotes v-model="sessionNote" />
+            <ExerciseCard
                 v-for="(exercise, exIdx) in exercises"
                 :key="exIdx"
-                class="p-6 md:p-8 hover:bg-[#fcfbf7] transition-colors group"
-            >
-                <div class="flex justify-between items-start mb-4 gap-4">
-                    <div class="flex flex-col gap-1 w-full">
-
-                        <div v-if="exercise.targetReps && exercise.targetReps > 0" class="inline-flex items-center gap-1.5 w-fit mb-1">
-                            <span class="font-mono text-[10px] text-foreground-text/50 uppercase tracking-widest">Target:</span>
-                            <span class="font-mono text-[10px] font-bold text-primary px-1.5 py-0.5 bg-primary/10 rounded">
-                                {{ exercise.sets.length }}×{{ exercise.targetReps }}{{ exercise.type === 'hold' ? 's' : ' reps' }}
-                            </span>
-                        </div>
-
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <h4 class="text-2xl font-bold group-hover:text-primary transition-colors uppercase leading-tight">
-                                {{ exercise.name }}
-                            </h4>
-                            <span
-                                class="px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded border"
-                                :class="exercise.type === 'hold'
-                                    ? 'bg-orange-50 border-orange-200 text-orange-700'
-                                    : 'bg-blue-50 border-blue-200 text-blue-700'"
-                            >
-                                {{ exercise.type === 'hold' ? 'HOLD (detik)' : 'REPS' }}
-                            </span>
-                        </div>
-
-                        <div v-if="exercise.subs" class="flex flex-wrap gap-2 mt-2">
-                            <label
-                                v-for="sub in exercise.subs"
-                                :key="sub.value"
-                                class="flex items-center gap-2 cursor-pointer group/sub"
-                            >
-                                <input
-                                    type="radio"
-                                    :name="`sub-${exIdx}`"
-                                    :value="sub.value"
-                                    v-model="exercise.selectedSub"
-                                    class="peer hidden"
-                                />
-                                <span class="w-4 h-4 border-2 border-separator rounded-full flex items-center justify-center transition-colors peer-checked:border-primary">
-                                    <span class="w-2 h-2 bg-primary rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></span>
-                                </span>
-                                <span class="font-mono text-sm text-foreground-text group-hover/sub:text-primary peer-checked:text-primary peer-checked:font-bold transition-colors">
-                                    {{ sub.label }}
-                                </span>
-                            </label>
-                        </div>
-
-                        <button
-                            type="button"
-                            @click="toggleNote(exIdx)"
-                            class="text-xs font-mono text-foreground-text/60 hover:text-primary flex items-center gap-1 w-fit mt-1"
-                        >
-                            <MessageSquare class="w-3 h-3" />
-                            <span v-if="exercise.note" class="text-primary font-bold">Edit Note</span>
-                            <span v-else>Add Note (e.g. kondisi, form cues)</span>
-                        </button>
-
-                        <div v-if="exercise.showNote || exercise.note" class="mt-2">
-                            <input
-                                v-model="exercise.note"
-                                type="text"
-                                placeholder="Kenapa beda dari biasanya?"
-                                class="w-full text-sm font-mono bg-yellow-50 border border-yellow-200 rounded p-2 text-foreground-text focus:outline-none focus:border-yellow-400 placeholder:text-gray-400"
-                            />
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col items-end gap-2 shrink-0">
-                        <span class="font-mono text-xs border border-separator px-2 py-1 rounded bg-white whitespace-nowrap">
-                            {{ exercise.sets.length }} SETS
-                        </span>
-                        <a
-                            :href="`https://www.youtube.com/results?search_query=${encodeURIComponent(effectiveName(exercise) + ' tutorial form calisthenics')}`"
-                            target="_blank"
-                            class="flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-600 border border-red-100 rounded hover:bg-red-600 hover:text-white hover:border-red-600 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                        >
-                            <Youtube class="w-3 h-3" />
-                            <span class="font-bold text-[10px] tracking-wider">WATCH</span>
-                        </a>
-                    </div>
-                </div>
-
-                <div v-if="lastWeekData[exIdx]" class="mb-4 p-3 bg-background rounded border border-separator">
-                    <span class="font-mono text-xs uppercase tracking-wider text-foreground-text opacity-70">
-                        Last Week (W{{ week - 1 }}):
-                        <span v-if="lastWeekData[exIdx].savedName && lastWeekData[exIdx].savedName !== effectiveName(exercise)" class="text-primary ml-1">
-                            [{{ lastWeekData[exIdx].savedName }}]
-                        </span>
-                    </span>
-                    <div class="flex gap-2 mt-1 flex-wrap">
-                        <span
-                            v-for="(set, idx) in lastWeekData[exIdx].sets"
-                            :key="idx"
-                            class="font-mono text-xs bg-white px-2 py-1 rounded border border-separator"
-                        >
-                            {{ set }}
-                        </span>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div v-for="(set, setIdx) in exercise.sets" :key="setIdx" class="flex items-center gap-2">
-                        <span class="font-mono text-xs text-primary w-6 pt-1">S{{ setIdx + 1 }}</span>
-                        <div class="relative w-full">
-                            <input
-                                v-model.number="set.value"
-                                type="number"
-                                placeholder="0"
-                                class="w-full bg-transparent border-b border-separator py-1 font-bold text-center focus:outline-none focus:border-primary transition-colors"
-                            />
-                        </div>
-                        <span class="text-separator text-xs font-mono shrink-0">
-                            {{ exercise.type === 'hold' ? 's' : 'reps' }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-6 md:p-8 bg-primary/5 border-b border-primary/20">
-                <div class="flex items-start gap-3">
-                    <Target class="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <div>
-                        <p class="font-bold text-sm text-foreground-primary">Skill & Milestone Tracker</p>
-                        <p class="font-mono text-xs text-foreground-text opacity-70 mt-1">
-                            Fokus pada form dan hold time. Tambah waktu hold 2-5 detik atau transisi ke progresi yang lebih berat secara bertahap saat form kamu sudah solid.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-8 bg-background">
-                <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-                    <label class="flex items-center gap-3 cursor-pointer group">
-                        <input type="checkbox" v-model="completed" class="peer hidden" />
-                        <div class="w-6 h-6 border-2 border-border rounded flex items-center justify-center transition-colors peer-checked:bg-primary peer-checked:border-primary">
-                            <Check class="w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity" stroke-width="3" />
-                        </div>
-                        <span class="font-bold text-foreground-primary group-hover:text-primary transition-colors">Session Completed</span>
-                    </label>
-
-                    <button type="submit" :disabled="saving" class="bg-primary text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-foreground-primary transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
-                        {{ saving ? "Saving..." : "Save Session" }}
-                    </button>
-                </div>
-                <div v-if="saveError" class="mt-4 text-red-500 font-bold text-center border border-red-200 bg-red-50 p-2 rounded">
-                    {{ saveError }}
-                </div>
-            </div>
+                v-model="exercises[exIdx]"
+                mode="calist"
+                :week="week"
+                :last-week-data="lastWeekData[exIdx]"
+            />
+            <ProgressiveTip mode="calist" />
+            <SaveFooter
+                v-model:completed="completed"
+                :saving="saving"
+                :save-error="saveError"
+            />
         </form>
-
-        <transition name="fade">
-            <div
-                v-if="showRules"
-                class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-                @click.self="showRules = false"
-            >
-                <div class="w-full max-w-sm bg-white border-2 border-foreground-primary p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative animate-bounce-in">
-                    <button @click="showRules = false" class="absolute top-4 right-4 text-foreground-text hover:text-red-500">
-                        <X class="w-6 h-6" />
-                    </button>
-
-                    <h3 class="text-xl font-black uppercase mb-4 border-b-2 border-primary w-fit">Logging Rules</h3>
-
-                    <div class="space-y-4 font-mono text-sm">
-                        <div class="bg-blue-50 p-3 rounded border border-blue-100">
-                            <div class="font-bold text-blue-800 mb-1">REPS Exercises</div>
-                            <p>Catat jumlah <strong>full range of motion reps</strong>.</p>
-                            <p class="text-xs text-blue-600 mt-1">Ex: Pull-up 6 reps → Tulis <strong>6</strong>. Jangan hitung partial rep.</p>
-                        </div>
-
-                        <div class="bg-orange-50 p-3 rounded border border-orange-100">
-                            <div class="font-bold text-orange-800 mb-1">HOLD Exercises</div>
-                            <p>Catat <strong>detik hold tanpa putus</strong>.</p>
-                            <p class="text-xs text-orange-600 mt-1">Ex: Planche Lean 12 detik lalu form break → Tulis <strong>12</strong>.</p>
-                        </div>
-
-                        <div class="bg-yellow-50 p-3 rounded border border-yellow-100">
-                            <div class="font-bold text-yellow-800 mb-1">Substitusi Alat</div>
-                            <p>Pilih versi yang lo pakai dari <strong>radio button</strong> di bawah nama exercise.</p>
-                            <p class="text-xs text-yellow-600 mt-1">Data tersimpan dengan nama versi yang dipilih — AI Coach tahu bedanya.</p>
-                        </div>
-                    </div>
-
-                    <button @click="showRules = false" class="w-full mt-6 py-3 bg-foreground-primary text-white font-bold uppercase rounded hover:bg-primary transition-colors">
-                        Got it
-                    </button>
-                </div>
-            </div>
-        </transition>
-
+        <LoggingRulesModal
+            :show="showRules"
+            mode="calist"
+            @close="showRules = false"
+        />
         <ProgramEditorSidebar
             :open="showProgramEditor"
             mode="calist"
@@ -285,14 +48,25 @@
 </template>
 
 <script setup lang="ts">
-import { BedDouble, Check, MessageSquare, ChevronDown, Target, Youtube, Info, X, Pencil, Lock, Settings2 } from "lucide-vue-next";
+import { ref, computed, onMounted, watch } from "vue";
+import ExerciseCard from "~/components/workout/ExerciseCard.vue";
+import WorkoutHeader from "~/components/workout/WorkoutHeader.vue";
+import RestDayState from "~/components/workout/RestDayState.vue";
+import SessionNotes from "~/components/workout/SessionNotes.vue";
+import ProgressiveTip from "~/components/workout/ProgressiveTip.vue";
+import SaveFooter from "~/components/workout/SaveFooter.vue";
+import LoggingRulesModal from "~/components/workout/LoggingRulesModal.vue";
 
-interface UISet { value: number; }
-interface SubOption { label: string; value: string; }
-
+interface UISet {
+    value: number;
+}
+interface SubOption {
+    label: string;
+    value: string;
+}
 interface UIExercise {
     name: string;
-    type: 'reps' | 'hold';
+    type: "reps" | "hold";
     sets: UISet[];
     subs?: SubOption[];
     selectedSub?: string;
@@ -300,17 +74,24 @@ interface UIExercise {
     showNote?: boolean;
     targetReps?: number;
 }
-
 interface SidebarExercise {
     id: string;
     name: string;
     sets: number;
     targetReps: number;
     equipment: string[];
-    type: 'reps' | 'hold';
+    type: "reps" | "hold";
+}
+interface ExerciseDef {
+    name: string;
+    type: "reps" | "hold";
+    setCount: number;
+    targetReps?: number;
+    subs?: SubOption[];
+    equipment?: string[];
 }
 
-const props = defineProps<{ week: number; day: string; }>();
+const props = defineProps<{ week: number; day: string }>();
 const emit = defineEmits(["saved"]);
 const { isAuthenticated, secureFetch } = useAuth();
 const route = useRoute();
@@ -320,98 +101,71 @@ const completed = ref(false);
 const saving = ref(false);
 const lastSaved = ref("");
 const saveError = ref("");
-const lastWeekData = ref<Record<number, { sets: string[]; savedName: string }>>({});
+const lastWeekData = ref<Record<number, { sets: string[]; name: string }>>({});
 const sessionNote = ref("");
-const showSessionNote = ref(false);
 const showRules = ref(false);
-
 const showProgramEditor = ref(false);
 const sidebarExercises = ref<SidebarExercise[]>([]);
-
-const customProgram = ref<Record<string, { exercises?: any[], name?: string, focus?: string, isRest?: boolean }> | null>(null);
-
-interface ExerciseDef {
-    name: string;
-    type: 'reps' | 'hold';
-    setCount: number;
-    targetReps?: number;
-    subs?: SubOption[];
-    equipment?: string[]; 
-}
-
-const programDefaults: Record<string, { isRest: boolean; name: string; focus: string; exercises: ExerciseDef[] }> = {
-    monday: { isRest: false, name: "FULL BODY A", focus: "Pull-ups & Push-ups", exercises: [
-        { name: "Pull-up", type: "reps", setCount: 4, targetReps: 8, equipment: ["Pull-up Bar"], subs: [{label: "Pull-up", value: "Pull-up"}, {label: "Band Assisted", value: "Band Pull-up"}] },
-        { name: "Push-up", type: "reps", setCount: 4, targetReps: 12, equipment: ["Floor"], subs: [{label: "Standard", value: "Push-up"}, {label: "Knee Push-up", value: "Knee Push-up"}] },
-        { name: "Pistol Squat Progression", type: "reps", setCount: 3, targetReps: 8, equipment: ["Floor"] },
-        { name: "Hollow Body Hold", type: "hold", setCount: 3, targetReps: 30, equipment: ["Floor"] },
-    ]},
-    tuesday: { isRest: true, name: "FULL BODY B", focus: "Chin-ups & Dips", exercises: [
-        { name: "Chin-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Pull-up Bar"] },
-        { name: "Parallel Bar Dips", type: "reps", setCount: 3, targetReps: 10, equipment: ["Dip Bar", "Parallettes"] },
-        { name: "Walking Lunges", type: "reps", setCount: 3, targetReps: 12, equipment: ["Floor"] },
-        { name: "L-Sit Progression", type: "hold", setCount: 3, targetReps: 15, equipment: ["Parallettes", "Floor"] },
-    ]},
-    wednesday: { isRest: false, name: "FULL BODY C", focus: "Rows & Pike Push", exercises: [
-        { name: "Inverted Row", type: "reps", setCount: 3, targetReps: 10, equipment: ["Rings", "Pull-up Bar"] },
-        { name: "Pike Push-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Floor"] },
-        { name: "Nordic Curl Negatives", type: "reps", setCount: 3, targetReps: 5, equipment: ["Floor"] },
-        { name: "Plank", type: "hold", setCount: 3, targetReps: 60, equipment: ["Floor"] },
-    ]},
-    thursday: { isRest: true, name: "FULL BODY A", focus: "Pull-ups & Push-ups", exercises: [
-        { name: "Pull-up", type: "reps", setCount: 4, targetReps: 8, equipment: ["Pull-up Bar"], subs: [{label: "Pull-up", value: "Pull-up"}, {label: "Band Assisted", value: "Band Pull-up"}] },
-        { name: "Push-up", type: "reps", setCount: 4, targetReps: 12, equipment: ["Floor"], subs: [{label: "Standard", value: "Push-up"}, {label: "Knee Push-up", value: "Knee Push-up"}] },
-        { name: "Pistol Squat Progression", type: "reps", setCount: 3, targetReps: 8, equipment: ["Floor"] },
-        { name: "Hollow Body Hold", type: "hold", setCount: 3, targetReps: 30, equipment: ["Floor"] },
-    ]},
-    friday: { isRest: false, name: "FULL BODY B", focus: "Chin-ups & Dips", exercises: [
-        { name: "Chin-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Pull-up Bar"] },
-        { name: "Parallel Bar Dips", type: "reps", setCount: 3, targetReps: 10, equipment: ["Dip Bar", "Parallettes"] },
-        { name: "Walking Lunges", type: "reps", setCount: 3, targetReps: 12, equipment: ["Floor"] },
-        { name: "L-Sit Progression", type: "hold", setCount: 3, targetReps: 15, equipment: ["Parallettes", "Floor"] },
-    ]},
-    saturday: { isRest: true, name: "FULL BODY C", focus: "Rows & Pike Push", exercises: [
-        { name: "Inverted Row", type: "reps", setCount: 3, targetReps: 10, equipment: ["Rings", "Pull-up Bar"] },
-        { name: "Pike Push-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Floor"] },
-        { name: "Nordic Curl Negatives", type: "reps", setCount: 3, targetReps: 5, equipment: ["Floor"] },
-        { name: "Plank", type: "hold", setCount: 3, targetReps: 60, equipment: ["Floor"] },
-    ]},
-    sunday: { isRest: true, name: "FULL BODY D", focus: "Skills & Core", exercises: [
-        { name: "Handstand Practice", type: "hold", setCount: 3, targetReps: 30, equipment: ["Floor"] },
-        { name: "Front Lever Progression", type: "hold", setCount: 3, targetReps: 15, equipment: ["Parallettes", "Pull-up Bar"] },
-        { name: "Arch Body Hold", type: "hold", setCount: 3, targetReps: 30, equipment: ["Floor"] },
-        { name: "Skin the Cat", type: "reps", setCount: 3, targetReps: 5, equipment: ["Rings", "Pull-up Bar"] },
-    ]}
-};
-
-const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const customProgram = ref<Record<
+    string,
+    { exercises?: any[]; name?: string; focus?: string; isRest?: boolean }
+> | null>(null);
 
 const effectiveTemplates = computed(() => {
     const result: Record<string, any> = {};
     for (const day of ALL_DAYS) {
-        const def = programDefaults[day] || { name: "REST DAY", focus: "Recover", exercises: [], isRest: true };
+        const def = calistProgramDefaults[day] || {
+            name: "REST DAY",
+            focus: "Recover",
+            exercises: [],
+            isRest: true,
+        };
         const custom = customProgram.value?.[day];
-
-        const isRest = custom?.isRest !== undefined ? custom.isRest : def.isRest;
-
+        const isRest =
+            custom?.isRest !== undefined ? custom.isRest : def.isRest;
         if (isRest) {
             result[day] = { name: "REST DAY", focus: "Recover", exercises: [] };
         } else if (custom) {
             result[day] = {
                 name: custom.name || def.name,
                 focus: custom.focus || def.focus,
-                exercises: custom.exercises && custom.exercises.length > 0 ? custom.exercises.map((customEx: any, idx: number) => {
-                    const fallbackDef = def.exercises?.[idx];
-                    return {
-                        ...fallbackDef,
-                        name: customEx.name || fallbackDef?.name || '',
-                        type: customEx.type || fallbackDef?.type || 'reps',
-                        setCount: customEx.setCount ?? customEx.sets ?? fallbackDef?.setCount ?? 3,
-                        targetReps: customEx.targetReps ?? fallbackDef?.targetReps ?? 10,
-                        subs: customEx.equipment?.length > 0 ? customEx.equipment.map((eq: string) => ({ label: eq, value: eq })) : fallbackDef?.subs,
-                        equipment: customEx.equipment ?? fallbackDef?.equipment ?? [],
-                    };
-                }) : def.exercises || [],
+                exercises:
+                    custom.exercises && custom.exercises.length > 0
+                        ? custom.exercises.map((customEx: any, idx: number) => {
+                              const fallbackDef = def.exercises?.[idx];
+                              return {
+                                  ...fallbackDef,
+                                  name:
+                                      customEx.name || fallbackDef?.name || "",
+                                  type:
+                                      customEx.type ||
+                                      fallbackDef?.type ||
+                                      "reps",
+                                  setCount:
+                                      customEx.setCount ??
+                                      customEx.sets ??
+                                      fallbackDef?.setCount ??
+                                      3,
+                                  targetReps:
+                                      customEx.targetReps ??
+                                      fallbackDef?.targetReps ??
+                                      10,
+                                  subs:
+                                      customEx.equipment?.length > 0
+                                          ? customEx.equipment.map(
+                                                (eq: string) => ({
+                                                    label: eq,
+                                                    value: eq,
+                                                }),
+                                            )
+                                          : fallbackDef?.subs,
+                                  equipment:
+                                      customEx.equipment ??
+                                      fallbackDef?.equipment ??
+                                      [],
+                              };
+                          })
+                        : def.exercises || [],
             };
         } else {
             result[day] = def;
@@ -420,13 +174,19 @@ const effectiveTemplates = computed(() => {
     return result;
 });
 
-const dayName  = computed(() => effectiveTemplates.value[props.day]?.name  || "REST DAY");
-const dayFocus = computed(() => effectiveTemplates.value[props.day]?.focus || "Recover");
+const dayName = computed(
+    () => effectiveTemplates.value[props.day]?.name || "REST DAY",
+);
+const dayFocus = computed(
+    () => effectiveTemplates.value[props.day]?.focus || "Recover",
+);
 
 function handleEditClick() {
     if (!isAuthenticated.value) {
-        alert("PREVIEW MODE: Silakan login untuk mengkustomisasi program dan alat.");
-        navigateTo('/login');
+        alert(
+            "PREVIEW MODE: Silakan login untuk mengkustomisasi program dan alat.",
+        );
+        navigateTo("/login");
         return;
     }
     openProgramEditor();
@@ -435,23 +195,26 @@ function handleEditClick() {
 function openProgramEditor() {
     const template = effectiveTemplates.value[props.day];
     if (!template) return;
-
-    sidebarExercises.value = template.exercises.map((def: any, idx: number) => ({
-        id: `ex-calist-${props.day}-${idx}`,
-        name: def.name,
-        sets: def.setCount,
-        targetReps: def.targetReps ?? 10,
-        equipment: def.equipment ?? (def.subs ? def.subs.map((s: any) => s.label) : []),
-        type: def.type,
-    }));
+    sidebarExercises.value = template.exercises.map(
+        (def: any, idx: number) => ({
+            id: `ex-calist-${props.day}-${idx}`,
+            name: def.name,
+            sets: def.setCount,
+            targetReps: def.targetReps ?? 10,
+            equipment:
+                def.equipment ??
+                (def.subs ? def.subs.map((s: any) => s.label) : []),
+            type: def.type,
+        }),
+    );
     showProgramEditor.value = true;
 }
 
 function onProgramSaved(updatedExercises: SidebarExercise[]) {
     if (!customProgram.value) customProgram.value = {};
     customProgram.value[props.day] = {
-        ...customProgram.value[props.day], 
-        exercises: updatedExercises.map(ex => ({
+        ...customProgram.value[props.day],
+        exercises: updatedExercises.map((ex) => ({
             name: ex.name,
             setCount: ex.sets,
             targetReps: ex.targetReps,
@@ -476,25 +239,26 @@ function allPossibleNames(ex: UIExercise | ExerciseDef): string[] {
 
 function formatSetValue(ex: UIExercise, val: number): string {
     if (!val || val <= 0) return "-";
-    return ex.type === 'hold' ? `${val}s` : `${val} reps`;
+    return ex.type === "hold" ? `${val}s` : `${val} reps`;
 }
 
 function parseSetValue(stored: string): number {
-    if (!stored || stored === '-') return 0;
+    if (!stored || stored === "-") return 0;
     return parseInt(stored) || 0;
-}
-
-function toggleNote(index: number) {
-    exercises.value[index].showNote = !exercises.value[index].showNote;
 }
 
 function initializeExercises() {
     const template = effectiveTemplates.value[props.day];
-    if (!template) { exercises.value = []; return; }
+    if (!template) {
+        exercises.value = [];
+        return;
+    }
     exercises.value = template.exercises.map((def: any) => ({
         name: def.name,
         type: def.type,
-        sets: Array(def.setCount).fill(null).map(() => ({ value: 0 })),
+        sets: Array(def.setCount)
+            .fill(null)
+            .map(() => ({ value: 0 })),
         subs: def.subs,
         selectedSub: def.subs ? def.subs[0].value : undefined,
         note: "",
@@ -504,16 +268,22 @@ function initializeExercises() {
 }
 
 async function loadLastWeekData() {
-    if (props.week <= 1) { lastWeekData.value = {}; return; }
+    if (props.week <= 1) {
+        lastWeekData.value = {};
+        return;
+    }
     try {
         if (dayName.value === "REST DAY") return;
-        const { data } = await secureFetch(`/api/calist/get?day=${dayName.value}`);
-        const lastWeekRows = (data as any[]).filter((row: any) => parseInt(row[0]) === props.week - 1);
-
+        const { data } = await secureFetch(
+            `/api/calist/get?day=${dayName.value}`,
+        );
+        const lastWeekRows = (data as any[]).filter(
+            (row: any) => parseInt(row[0]) === props.week - 1,
+        );
         if (lastWeekRows.length > 0) {
             const template = effectiveTemplates.value[props.day];
-            const dataMap: Record<number, { sets: string[]; savedName: string }> = {};
-
+            const dataMap: Record<number, { sets: string[]; name: string }> =
+                {};
             template?.exercises.forEach((def: any, idx: number) => {
                 const possibleNames = allPossibleNames(def);
                 let exerciseRow: any = null;
@@ -522,28 +292,36 @@ async function loadLastWeekData() {
                     if (exerciseRow) break;
                 }
                 if (exerciseRow) {
-                    const sets = [exerciseRow[5], exerciseRow[6], exerciseRow[7], exerciseRow[8]]
-                        .filter((s: any) => s && s !== "-" && s !== undefined);
-                    dataMap[idx] = { sets, savedName: exerciseRow[4] };
+                    const sets = [
+                        exerciseRow[5],
+                        exerciseRow[6],
+                        exerciseRow[7],
+                        exerciseRow[8],
+                    ].filter((s: any) => s && s !== "-" && s !== undefined);
+                    dataMap[idx] = { sets, name: exerciseRow[4] };
                 }
             });
             lastWeekData.value = dataMap;
         }
     } catch (error) {
-        console.error("Failed to load last week data:", error);
+        console.error(error);
     }
 }
 
 async function loadCurrentSession() {
     try {
         if (dayName.value === "REST DAY") return;
-        const { data } = await secureFetch(`/api/calist/get?day=${dayName.value}`);
-        const currentRows = (data as any[]).filter((row: any) => parseInt(row[0]) === props.week);
-
+        const { data } = await secureFetch(
+            `/api/calist/get?day=${dayName.value}`,
+        );
+        const currentRows = (data as any[]).filter(
+            (row: any) => parseInt(row[0]) === props.week,
+        );
         if (currentRows.length > 0) {
             const firstRow = currentRows[0];
-            if (firstRow[11]) { sessionNote.value = firstRow[11]; showSessionNote.value = true; }
-
+            if (firstRow[11]) {
+                sessionNote.value = firstRow[11];
+            }
             exercises.value.forEach((exercise) => {
                 const possibleNames = allPossibleNames(exercise);
                 let savedRow: any = null;
@@ -553,48 +331,57 @@ async function loadCurrentSession() {
                 }
                 if (savedRow) {
                     if (exercise.subs) {
-                        const matchedSub = exercise.subs.find(s => s.value === savedRow[4]);
+                        const matchedSub = exercise.subs.find(
+                            (s) => s.value === savedRow[4],
+                        );
                         if (matchedSub) exercise.selectedSub = matchedSub.value;
                     }
-                    exercise.sets.forEach((set, idx) => {
-                        set.value = parseSetValue(savedRow[5 + idx]);
-                    });
+                    exercise.sets.forEach(
+                        (set, idx) =>
+                            (set.value = parseSetValue(savedRow[5 + idx])),
+                    );
                     if (savedRow[10]) exercise.note = savedRow[10];
                 }
             });
             if (currentRows[0][9] === "YES") completed.value = true;
         }
     } catch (error) {
-        console.error("Failed to load current session:", error);
+        console.error(error);
     }
 }
 
 async function saveWorkout() {
     if (dayName.value === "REST DAY") return;
-    if (!isAuthenticated.value) { navigateTo("/login"); return; }
-
+    if (!isAuthenticated.value) {
+        navigateTo("/login");
+        return;
+    }
     saving.value = true;
     saveError.value = "";
-
     try {
         const now = new Date();
         const dateStr = now.toLocaleDateString("id-ID");
-        const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-
-        const exercisePayload = exercises.value.map(ex => ({
+        const timeStr = now.toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+        const exercisePayload = exercises.value.map((ex) => ({
             name: effectiveName(ex),
-            sets: ex.sets.map(s => formatSetValue(ex, s.value)),
+            sets: ex.sets.map((s) => formatSetValue(ex, s.value)),
             note: ex.note || "",
         }));
-
         await secureFetch("/api/calist/save", {
             method: "POST",
             body: {
-                week: props.week, day: dayName.value, date: dateStr, time: timeStr,
-                exercises: exercisePayload, completed: completed.value, sessionNote: sessionNote.value || "",
+                week: props.week,
+                day: dayName.value,
+                date: dateStr,
+                time: timeStr,
+                exercises: exercisePayload,
+                completed: completed.value,
+                sessionNote: sessionNote.value || "",
             },
         });
-
         lastSaved.value = `${dateStr} ${timeStr}`;
         emit("saved");
         completed.value = false;
@@ -612,56 +399,47 @@ async function saveWorkout() {
 
 onMounted(async () => {
     try {
-        const res = await secureFetch('/api/program/get?mode=calist') as { config: any; start_date: string | null };
+        const res = (await secureFetch("/api/program/get?mode=calist")) as {
+            config: any;
+            start_date: string | null;
+        };
         if (res.config) customProgram.value = res.config;
-    } catch { /* fall through to defaults */ }
+    } catch {}
 
     initializeExercises();
     if (dayName.value !== "REST DAY") {
         await Promise.all([loadLastWeekData(), loadCurrentSession()]);
     }
-
-    if (route.query.tour === 'editor') {
-        setTimeout(() => {
-            openProgramEditor();
-        }, 500);
-    }
+    if (route.query.tour === "editor")
+        setTimeout(() => openProgramEditor(), 500);
 });
 
-watch(() => props.day, async () => {
-    initializeExercises();
-    sessionNote.value = "";
-    showSessionNote.value = false;
-    if (dayName.value !== "REST DAY") {
-        await Promise.all([loadLastWeekData(), loadCurrentSession()]);
-    }
-});
+watch(
+    () => props.day,
+    async () => {
+        initializeExercises();
+        sessionNote.value = "";
+        if (dayName.value !== "REST DAY")
+            await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+    },
+);
 
-watch(() => props.week, () => {
-    sessionNote.value = "";
-    showSessionNote.value = false;
-    if (dayName.value !== "REST DAY") {
-        loadLastWeekData();
-        loadCurrentSession();
-    }
-});
+watch(
+    () => props.week,
+    () => {
+        sessionNote.value = "";
+        if (dayName.value !== "REST DAY") {
+            loadLastWeekData();
+            loadCurrentSession();
+        }
+    },
+);
 
-watch(() => route.query.tour, (newVal) => {
-    if (newVal === 'step5') {
-        setTimeout(() => {
-            openProgramEditor();
-        }, 100);
-    }
-}, { immediate: true });
+watch(
+    () => route.query.tour,
+    (newVal) => {
+        if (newVal === "step5") setTimeout(() => openProgramEditor(), 100);
+    },
+    { immediate: true },
+);
 </script>
-
-<style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-@keyframes bounceIn {
-    0%   { transform: scale(0.9); opacity: 0; }
-    50%  { transform: scale(1.05); }
-    100% { transform: scale(1); opacity: 1; }
-}
-.animate-bounce-in { animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-</style>

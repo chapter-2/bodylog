@@ -1,86 +1,151 @@
 <template>
-    <div class="inner border-x border-separator bg-white min-h-[60vh] flex flex-col md:flex-row">
+    <div
+        class="inner border-x border-separator bg-white min-h-[60vh] flex flex-col md:flex-row"
+    >
         <div class="flex-1 p-8 md:p-16 flex flex-col justify-center">
-            <span class="font-handwriting text-xl text-primary mb-4 block rotate-2 w-fit">Morning Check-in!</span>
-            <h2 class="text-4xl md:text-6xl font-black mb-12 uppercase text-foreground-primary">
+            <span
+                class="font-handwriting text-xl text-primary mb-4 block rotate-2 w-fit"
+                >Morning Check-in!</span
+            >
+            <h2
+                class="text-4xl md:text-6xl font-black mb-12 uppercase text-foreground-primary"
+            >
                 Weekly Weigh-In
             </h2>
 
             <form @submit.prevent="saveWeight" class="space-y-12 max-w-md">
                 <div class="group">
-                    <label class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2 group-hover:text-primary transition-colors">
+                    <label
+                        class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2 group-hover:text-primary transition-colors"
+                    >
                         Current Weight (20 - 700 KG)
                     </label>
                     <div class="relative">
-                        <input 
-                            v-model.number="weight" 
+                        <input
+                            v-model.number="weight"
                             @input="enforceWeightMax"
                             @blur="enforceWeightMin"
-                            type="number" 
-                            step="0.1" 
-                            min="20" 
-                            max="700" 
-                            placeholder="00.0" 
-                            class="input-pow text-6xl py-4" 
-                            required 
+                            type="number"
+                            step="0.1"
+                            min="20"
+                            max="700"
+                            placeholder="00.0"
+                            class="input-pow text-6xl py-4"
+                            required
                         />
-                        <span class="absolute right-0 bottom-4 text-2xl font-bold text-separator">KG</span>
+                        <span
+                            class="absolute right-0 bottom-4 text-2xl font-bold text-separator"
+                            >KG</span
+                        >
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-8">
                     <div class="group">
-                        <label class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2">
+                        <label
+                            class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2"
+                        >
                             Week (1-1000)
                         </label>
-                        <input 
-                            v-model.number="week" 
+                        <input
+                            v-model.number="week"
                             @input="enforceWeekMax"
                             @blur="enforceWeekMin"
-                            type="number" 
-                            min="1" 
-                            max="1000" 
-                            placeholder="1" 
-                            class="input-pow" 
-                            required 
+                            type="number"
+                            min="1"
+                            max="1000"
+                            placeholder="1"
+                            class="input-pow"
+                            required
                         />
                     </div>
                     <div class="group">
-                        <label class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2">Note (Max 150 chars)</label>
-                        <input v-model="notes" type="text" maxlength="150" placeholder="Feeling..." class="input-pow" />
+                        <label
+                            class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2"
+                            >Note (Max 150 chars)</label
+                        >
+                        <input
+                            v-model="notes"
+                            type="text"
+                            maxlength="150"
+                            placeholder="Feeling..."
+                            class="input-pow"
+                        />
                     </div>
                 </div>
 
                 <div class="pt-8">
-                    <button type="submit" :disabled="saving || isLoadingWeek" class="w-full h-16 bg-foreground-primary text-white rounded-xl font-bold text-xl hover:bg-primary transition-all hover:scale-[1.02] flex justify-center items-center gap-3 disabled:opacity-70 disabled:hover:scale-100 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]">
-                        {{ saving ? "Saving..." : isLoadingWeek ? "Loading..." : "Log Weight" }}
+                    <button
+                        type="submit"
+                        :disabled="saving || isLoadingWeek"
+                        class="w-full h-16 bg-foreground-primary text-white rounded-xl font-bold text-xl hover:bg-primary transition-all hover:scale-[1.02] flex justify-center items-center gap-3 disabled:opacity-70 disabled:hover:scale-100 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]"
+                    >
+                        {{
+                            saving
+                                ? "Saving..."
+                                : isLoadingWeek
+                                  ? "Loading..."
+                                  : "Log Weight"
+                        }}
                         <span v-if="!saving && !isLoadingWeek">→</span>
                     </button>
                 </div>
 
-                <div v-if="saveError" class="text-red-500 font-bold text-center mt-4">
+                <div
+                    v-if="saveError"
+                    class="text-red-500 font-bold text-center mt-4"
+                >
                     {{ saveError }}
                 </div>
             </form>
         </div>
 
-        <div class="md:w-1/3 bg-[#fcfbf7] border-l border-separator p-8 flex flex-col justify-center relative overflow-hidden">
-            <div class="absolute top-0 right-0 p-32 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+        <div
+            class="md:w-1/3 bg-[#fcfbf7] border-l border-separator p-8 flex flex-col justify-center relative overflow-hidden"
+        >
+            <div
+                class="absolute top-0 right-0 p-32 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"
+            ></div>
             <div class="relative z-10">
                 <Notebook class="w-15 h-15 text-primary mb-6" />
                 <h3 class="text-2xl font-bold mb-4 text-foreground-primary">
-                    {{ props.goal === 'cut' ? 'Cutting Strategy' : props.goal === 'maintain' ? 'Maintenance Strategy' : 'Bulking Strategy' }}
+                    {{
+                        props.goal === "cut"
+                            ? "Cutting Strategy"
+                            : props.goal === "maintain"
+                              ? "Maintenance Strategy"
+                              : "Bulking Strategy"
+                    }}
                 </h3>
-                
-                <p class="font-mono text-sm leading-relaxed mb-8 text-foreground-text">
-                    <span v-if="props.goal === 'cut'">If scale weight stalls for >2 weeks, decrease daily intake by <strong>200-300 kcal</strong> or add cardio. Focus on high protein to preserve muscle mass.</span>
-                    <span v-else-if="props.goal === 'maintain'">Monitor your average weight. Adjust calories slightly if it consistently trends up or down by more than 1kg from baseline.</span>
-                    <span v-else>If scale weight stalls for >2 weeks, increase daily intake by <strong>200-300 kcal</strong>. Focus on clean carbs pre/post workout.</span>
+
+                <p
+                    class="font-mono text-sm leading-relaxed mb-8 text-foreground-text"
+                >
+                    <span v-if="props.goal === 'cut'"
+                        >If scale weight stalls for >2 weeks, decrease daily
+                        intake by <strong>200-300 kcal</strong> or add cardio.
+                        Focus on high protein to preserve muscle mass.</span
+                    >
+                    <span v-else-if="props.goal === 'maintain'"
+                        >Monitor your average weight. Adjust calories slightly
+                        if it consistently trends up or down by more than 1kg
+                        from baseline.</span
+                    >
+                    <span v-else
+                        >If scale weight stalls for >2 weeks, increase daily
+                        intake by <strong>200-300 kcal</strong>. Focus on clean
+                        carbs pre/post workout.</span
+                    >
                 </p>
 
                 <div v-if="lastSaved" class="border-t border-separator pt-8">
-                    <span class="font-handwriting text-foreground-text block mb-2">Last Entry:</span>
-                    <div class="text-4xl font-black text-primary">{{ lastSaved }}</div>
+                    <span
+                        class="font-handwriting text-foreground-text block mb-2"
+                        >Last Entry:</span
+                    >
+                    <div class="text-4xl font-black text-primary">
+                        {{ lastSaved }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -91,7 +156,7 @@
 import { Notebook } from "lucide-vue-next";
 
 const props = defineProps({
-    goal: { type: String, default: 'bulk' }
+    goal: { type: String, default: "bulk" },
 });
 
 const emit = defineEmits(["saved"]);
@@ -103,31 +168,40 @@ const saving = ref(false);
 const isLoadingWeek = ref(true);
 const lastSaved = ref("");
 const saveError = ref("");
-
-// STATE BARU: Menyimpan tanggal asli agar tidak ter-overwrite saat edit
-const originalDate = ref(""); 
+const originalDate = ref("");
 
 defineExpose({
-    loadEditData: (editWeek: number, editWeight: number, editNotes: string, editDate: string) => {
+    loadEditData: (
+        editWeek: number,
+        editWeight: number,
+        editNotes: string,
+        editDate: string,
+    ) => {
         week.value = editWeek;
         weight.value = editWeight;
         notes.value = editNotes;
-        originalDate.value = editDate; // Simpan tanggal aslinya
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+        originalDate.value = editDate;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    },
 });
 
 function enforceWeightMax() {
     if (weight.value !== null && weight.value > 700) weight.value = 700;
 }
 function enforceWeightMin() {
-    if (weight.value !== null && weight.value !== '' as any && weight.value < 20) weight.value = 20;
+    if (
+        weight.value !== null &&
+        weight.value !== ("" as any) &&
+        weight.value < 20
+    )
+        weight.value = 20;
 }
 function enforceWeekMax() {
     if (week.value !== null && week.value > 1000) week.value = 1000;
 }
 function enforceWeekMin() {
-    if (week.value !== null && week.value !== '' as any && week.value < 1) week.value = 1;
+    if (week.value !== null && week.value !== ("" as any) && week.value < 1)
+        week.value = 1;
 }
 
 onMounted(async () => {
@@ -139,8 +213,10 @@ onMounted(async () => {
             if (res && res.data && res.data.length > 0) {
                 const dataRows = res.data.slice(1);
                 if (dataRows.length > 0) {
-                     const maxWeek = Math.max(...dataRows.map((row: any[]) => parseInt(row[0]) || 0));
-                     week.value = Math.min(maxWeek + 1, 1000);
+                    const maxWeek = Math.max(
+                        ...dataRows.map((row: any[]) => parseInt(row[0]) || 0),
+                    );
+                    week.value = Math.min(maxWeek + 1, 1000);
                 }
             }
         } catch (e) {
@@ -172,8 +248,8 @@ async function saveWeight() {
     saveError.value = "";
 
     try {
-        // LOGIC BARU: Gunakan tanggal asli jika sedang edit, atau tanggal hari ini jika input baru
-        const dateStr = originalDate.value || new Date().toLocaleDateString("id-ID");
+        const dateStr =
+            originalDate.value || new Date().toLocaleDateString("id-ID");
 
         await secureFetch("/api/weight/save", {
             method: "POST",
@@ -187,17 +263,18 @@ async function saveWeight() {
 
         lastSaved.value = `${dateStr}`;
         emit("saved");
-        
-        // Reset form
+
         weight.value = null;
         notes.value = "";
-        originalDate.value = ""; // Reset tanggal aslinya
-        
+        originalDate.value = "";
+
         const res = await secureFetch("/api/weight/get").catch(() => null);
         if (res && res.data && res.data.length > 0) {
             const dataRows = res.data.slice(1);
             if (dataRows.length > 0) {
-                const maxWeek = Math.max(...dataRows.map((row: any[]) => parseInt(row[0]) || 0));
+                const maxWeek = Math.max(
+                    ...dataRows.map((row: any[]) => parseInt(row[0]) || 0),
+                );
                 week.value = Math.min(maxWeek + 1, 1000);
             }
         }
@@ -206,7 +283,8 @@ async function saveWeight() {
             saveError.value = "Session expired. Please login again.";
             setTimeout(() => navigateTo("/login"), 2000);
         } else {
-            saveError.value = error.data?.message || error.message || "Failed to save.";
+            saveError.value =
+                error.data?.message || error.message || "Failed to save.";
         }
     } finally {
         saving.value = false;

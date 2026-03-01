@@ -1,5 +1,5 @@
-import { requireAuth } from '../../utils/auth';
-import { getDb } from '../../utils/db';
+import { requireAuth } from "../../utils/auth";
+import { getDb } from "../../utils/db";
 
 export default defineEventHandler((event) => {
   requireAuth(event);
@@ -7,30 +7,36 @@ export default defineEventHandler((event) => {
   try {
     const db = getDb();
 
-    // Hapus filter user_id karena aplikasi ini masih single-tenant di level database
-    const gymSessions = db.prepare(
-      'SELECT week, day, date, time, exercise_name, set1, set2, set3, set4, completed, notes, session_note FROM gym_sessions ORDER BY week ASC, day ASC'
-    ).all();
+    const gymSessions = db
+      .prepare(
+        "SELECT week, day, date, time, exercise_name, set1, set2, set3, set4, completed, notes, session_note FROM gym_sessions ORDER BY week ASC, day ASC",
+      )
+      .all();
 
-    const calistSessions = db.prepare(
-      'SELECT week, day, date, time, exercise_name, set1, set2, set3, set4, completed, notes, session_note FROM calist_sessions ORDER BY week ASC, day ASC'
-    ).all();
+    const calistSessions = db
+      .prepare(
+        "SELECT week, day, date, time, exercise_name, set1, set2, set3, set4, completed, notes, session_note FROM calist_sessions ORDER BY week ASC, day ASC",
+      )
+      .all();
 
     let weightEntries = [];
     try {
-        weightEntries = db.prepare(
-          'SELECT week, date, weight, notes FROM weight_entries ORDER BY week ASC'
-        ).all();
+      weightEntries = db
+        .prepare(
+          "SELECT week, date, weight, notes FROM weight_entries ORDER BY week ASC",
+        )
+        .all();
     } catch {
-        // Fallback darurat jika SQLite masih menyimpan tabel lama
-        weightEntries = db.prepare(
-          'SELECT week, date, weight, notes FROM bulk_entries ORDER BY week ASC'
-        ).all();
+      weightEntries = db
+        .prepare(
+          "SELECT week, date, weight, notes FROM bulk_entries ORDER BY week ASC",
+        )
+        .all();
     }
 
     return {
       exported_at: new Date().toISOString(),
-      version: '1.3',
+      version: "1.3",
       gym_sessions: gymSessions,
       calist_sessions: calistSessions,
       weight_entries: weightEntries,

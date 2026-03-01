@@ -1,4 +1,4 @@
-import { requireAuth } from '../../utils/auth';
+import { requireAuth } from "../../utils/auth";
 
 export default defineEventHandler(async (event) => {
   requireAuth(event);
@@ -7,22 +7,29 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event);
     const { mode, date } = body;
 
-    if (!mode || !['gym', 'calist'].includes(mode)) {
-      throw createError({ statusCode: 400, message: 'mode must be "gym" or "calist"' });
+    if (!mode || !["gym", "calist"].includes(mode)) {
+      throw createError({
+        statusCode: 400,
+        message: 'mode must be "gym" or "calist"',
+      });
     }
 
-    // Validate date — must be a parseable ISO date string (YYYY-MM-DD)
     const parsed = new Date(date);
     if (!date || isNaN(parsed.getTime())) {
-      throw createError({ statusCode: 400, message: 'date must be a valid ISO date string (YYYY-MM-DD)' });
+      throw createError({
+        statusCode: 400,
+        message: "date must be a valid ISO date string (YYYY-MM-DD)",
+      });
     }
 
     const db = getDb();
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO program_config (key, value)
       VALUES (?, ?)
       ON CONFLICT(key) DO UPDATE SET value = excluded.value
-    `).run(`start_date_${mode}`, date);
+    `,
+    ).run(`start_date_${mode}`, date);
 
     return { success: true };
   } catch (error: any) {

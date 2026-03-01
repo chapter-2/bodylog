@@ -1,22 +1,22 @@
-import Database from 'better-sqlite3';
-import { join } from 'node:path';
-import { mkdirSync } from 'node:fs';
+import Database from "better-sqlite3";
+import { join } from "node:path";
+import { mkdirSync } from "node:fs";
 
 let _db: Database.Database | null = null;
 
 export function getDb(): Database.Database {
   if (_db) return _db;
 
-  const dbDir = process.env.DB_PATH ?? join(process.cwd(), 'data');
+  const dbDir = process.env.DB_PATH ?? join(process.cwd(), "data");
 
   try {
     mkdirSync(dbDir, { recursive: true });
   } catch {}
 
-  const dbFile = join(dbDir, 'bodylog.db');
+  const dbFile = join(dbDir, "bodylog.db");
   _db = new Database(dbFile);
-  _db.pragma('journal_mode = WAL');
-  _db.pragma('foreign_keys = ON');
+  _db.pragma("journal_mode = WAL");
+  _db.pragma("foreign_keys = ON");
 
   initializeTables(_db);
   return _db;
@@ -44,7 +44,7 @@ function initializeTables(db: Database.Database): void {
       date    TEXT    NOT NULL,
       weight  REAL    NOT NULL,
       notes   TEXT    DEFAULT ''
-    );    
+    );
 
     CREATE TABLE IF NOT EXISTS gym_sessions (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,

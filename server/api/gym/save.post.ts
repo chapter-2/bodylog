@@ -1,4 +1,4 @@
-import type { GymSession } from '~/types';
+import type { GymSession } from "~/types";
 
 export default defineEventHandler(async (event) => {
   requireAuth(event);
@@ -25,33 +25,36 @@ export default defineEventHandler(async (event) => {
 
     const saveAll = db.transaction(() => {
       for (const exercise of body.exercises) {
-        const setsData = exercise.sets.map(s =>
-          (s.weight > 0 || s.reps > 0) ? `${s.weight}kg × ${s.reps}` : '-'
+        const setsData = exercise.sets.map((s) =>
+          s.weight > 0 || s.reps > 0 ? `${s.weight}kg × ${s.reps}` : "-",
         );
-        while (setsData.length < 4) setsData.push('-');
+        while (setsData.length < 4) setsData.push("-");
 
         upsert.run(
           body.week,
           body.day,
           body.date,
-          body.time ?? '',
+          body.time ?? "",
           exercise.name,
           setsData[0],
           setsData[1],
           setsData[2],
           setsData[3],
-          body.completed ? 'YES' : 'NO',
-          exercise.note ?? '',
-          body.sessionNote ?? '',
+          body.completed ? "YES" : "NO",
+          exercise.note ?? "",
+          body.sessionNote ?? "",
         );
       }
     });
 
     saveAll();
 
-    return { success: true, message: 'Workout saved successfully' };
+    return { success: true, message: "Workout saved successfully" };
   } catch (error: any) {
-    console.error('Failed to save gym session:', error);
-    throw createError({ statusCode: 500, message: `Failed to save: ${error.message}` });
+    console.error("Failed to save gym session:", error);
+    throw createError({
+      statusCode: 500,
+      message: `Failed to save: ${error.message}`,
+    });
   }
 });

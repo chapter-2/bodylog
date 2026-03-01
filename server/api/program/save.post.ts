@@ -1,4 +1,4 @@
-import { requireAuth } from '../../utils/auth';
+import { requireAuth } from "../../utils/auth";
 
 export default defineEventHandler(async (event) => {
   requireAuth(event);
@@ -7,19 +7,27 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event);
     const { mode, config } = body;
 
-    if (!mode || !['gym', 'calist'].includes(mode)) {
-      throw createError({ statusCode: 400, message: 'mode must be "gym" or "calist"' });
+    if (!mode || !["gym", "calist"].includes(mode)) {
+      throw createError({
+        statusCode: 400,
+        message: 'mode must be "gym" or "calist"',
+      });
     }
-    if (!config || typeof config !== 'object') {
-      throw createError({ statusCode: 400, message: 'config is required and must be an object' });
+    if (!config || typeof config !== "object") {
+      throw createError({
+        statusCode: 400,
+        message: "config is required and must be an object",
+      });
     }
 
     const db = getDb();
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO program_config (key, value)
       VALUES (?, ?)
       ON CONFLICT(key) DO UPDATE SET value = excluded.value
-    `).run(`program_${mode}`, JSON.stringify(config));
+    `,
+    ).run(`program_${mode}`, JSON.stringify(config));
 
     return { success: true };
   } catch (error: any) {
