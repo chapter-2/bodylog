@@ -1,15 +1,18 @@
 export const useMode = () => {
-    const modeCookie = useCookie('training_mode', { maxAge: 60 * 60 * 24 * 365 });
-    const intensityCookie = useCookie('training_intensity', { maxAge: 60 * 60 * 24 * 365 });
-    const freqCookie = useCookie('training_frequency', { maxAge: 60 * 60 * 24 * 365 });
-    // Tambahkan cookie untuk status tour
-    const tourCookie = useCookie('has_seen_tour', { maxAge: 60 * 60 * 24 * 365 });
+    // Pastikan semua cookie menggunakan path: '/' agar terbaca di seluruh halaman
+    const modeCookie = useCookie('training_mode', { maxAge: 60 * 60 * 24 * 365, path: '/' });
+    const intensityCookie = useCookie('training_intensity', { maxAge: 60 * 60 * 24 * 365, path: '/' });
+    const freqCookie = useCookie('training_frequency', { maxAge: 60 * 60 * 24 * 365, path: '/' });
+    const tourCookie = useCookie('has_seen_tour', { maxAge: 60 * 60 * 24 * 365, path: '/' });
     
-    const mode = useState<string>('mode', () => modeCookie.value || "");
-    const intensity = useState<string>('intensity', () => intensityCookie.value || "");
+    const mode = useState<string>('mode', () => String(modeCookie.value || ""));
+    const intensity = useState<string>('intensity', () => String(intensityCookie.value || ""));
     const frequency = useState<number>('frequency', () => Number(freqCookie.value) || 0);
-    // State untuk tour
-    const hasSeenTour = useState<boolean>('has_seen_tour', () => tourCookie.value === 'true');
+    
+    // PERBAIKAN FATAL: Nuxt mem-parsing 'true' menjadi boolean asli. Kita harus cek keduanya.
+    const hasSeenTour = useState<boolean>('has_seen_tour', () => {
+        return tourCookie.value === true || tourCookie.value === 'true';
+    });
 
     const isGym = computed(() => mode.value === 'gym');
     const isCalist = computed(() => mode.value === 'calist');
@@ -32,15 +35,13 @@ export const useMode = () => {
         setMode("", "", 0);
     };
 
-    // Fungsi untuk menyelesaikan tour
     const completeTour = () => {
-        tourCookie.value = 'true';
+        tourCookie.value = true as any; // Paksa simpan sebagai boolean murni
         hasSeenTour.value = true;
     };
 
-    // Fungsi untuk mengulang tour (reset)
     const resetTour = () => {
-        tourCookie.value = 'false';
+        tourCookie.value = false as any;
         hasSeenTour.value = false;
     };
 
@@ -55,7 +56,6 @@ export const useMode = () => {
         hasMode,
         setMode,
         resetMode,
-        // Ekspor fungsi tour
         hasSeenTour,
         completeTour,
         resetTour

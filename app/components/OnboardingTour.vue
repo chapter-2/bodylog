@@ -1,6 +1,6 @@
 <template>
     <transition name="fade">
-        <div v-if="isActive" class="fixed inset-0 z-[200] pointer-events-none overflow-hidden">
+        <div v-if="localIsActive" class="fixed inset-0 z-[200] pointer-events-none overflow-hidden">
             
             <div class="fixed inset-0 z-[180] pointer-events-auto" @click="step === 7 ? finishTour() : nextStep()"></div>
             
@@ -26,8 +26,13 @@
                  </svg>
                  
                  <div class="bg-white border-2 border-foreground-primary p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] pointer-events-auto text-left w-full relative z-10">
+                     
+                     <button @click.stop="finishTour" class="absolute top-4 right-4 text-foreground-text/40 hover:text-red-500 transition-colors" title="Skip Tour">
+                         <X class="w-5 h-5" />
+                     </button>
+
                      <div class="font-mono text-xs text-primary font-bold mb-1">Step {{ step }}/7</div>
-                     <h3 class="font-black uppercase text-xl mb-2">{{ currentContent.title }}</h3>
+                     <h3 class="font-black uppercase text-xl mb-2 pr-6">{{ currentContent.title }}</h3>
                      <p class="font-mono text-xs text-foreground-text mb-6 leading-relaxed" v-html="currentContent.desc"></p>
                      <button @click.stop="nextStep" class="w-full py-3 bg-foreground-primary text-white font-bold text-xs uppercase tracking-wider hover:bg-primary transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]">
                          {{ step === 7 ? 'Selesai & Eksekusi' : (step === 4 ? 'Buka Editor →' : 'Next →') }}
@@ -40,8 +45,13 @@
                  :style="getStep5Style()">
                  
                  <div class="bg-white border-2 border-foreground-primary p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full pointer-events-auto text-left relative z-10">
+                     
+                     <button @click.stop="finishTour" class="absolute top-4 right-4 text-foreground-text/40 hover:text-red-500 transition-colors" title="Skip Tour">
+                         <X class="w-5 h-5" />
+                     </button>
+
                      <div class="font-mono text-xs text-primary font-bold mb-1">Step 5/7</div>
-                     <h3 class="font-black uppercase text-xl mb-2">Drag & Drop</h3>
+                     <h3 class="font-black uppercase text-xl mb-2 pr-6">Drag & Drop</h3>
                      <p class="font-mono text-xs text-foreground-text mb-6 leading-relaxed">
                          Ini Sidebar Editor. <span class="inline md:hidden">Di HP muncul dari bawah.</span><span class="hidden md:inline">Di PC muncul dari kanan.</span><br><br>
                          Ganti urutan, set target repetisi, dan catat alat alternatif (substitusi) di sini. Semua perubahan akan langsung tersimpan.
@@ -60,20 +70,50 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { X } from 'lucide-vue-next';
 
+const route = useRoute();
+const { isAuthenticated } = useAuth();
 const { hasSeenTour, completeTour, hasMode, mode } = useMode();
 const isMenuOpen = useState('isMenuOpen', () => false);
 const step = ref(1);
 
-const isActive = computed(() => hasMode.value && !hasSeenTour.value);
+const localIsActive = ref(false);
+
+// ─── ENGINE PINTAR 3.0 (Anti Ghost-Refresh) ───
+const evaluateTour = () => {
+    // Jangan jalankan apa pun jika belum setup atau belum login
+    if (!hasMode.value || route.path === '/login' || !isAuthenticated.value) return;
+
+    if (!localIsActive.value && !hasSeenTour.value) {
+        // USER BARU: Munculkan tour dan kunci cookie-nya langsung!
+        localIsActive.value = true;
+        step.value = 1;
+        completeTour(); 
+    } else if (hasSeenTour.value && route.query.tour) {
+        // USER LAMA MEREFRESH: Jika ada sisa query URL dari tour yang sudah selesai, hapus!
+        const query = { ...route.query };
+        delete query.tour;
+        navigateTo({ query }, { replace: true });
+    }
+};
+
+onMounted(() => {
+    evaluateTour();
+});
+
+watch([hasMode, isAuthenticated, () => route.path], () => {
+    evaluateTour();
+});
+// ───────────────────────────────────────────────────────
 
 const contents = [
     { title: '01. Eksekusi Harian', desc: 'Ini medan tempurmu. Buka tiap hari latihan untuk mencatat progres beban dan repetisi.' },
     { title: '02. Weigh-In', desc: 'Set targetmu (Bulk/Cut/Maintain) dan pantau deviasi berat badan mingguanmu secara presisi di sini.' },
     { title: '03. AI Coach', desc: 'Ekspor datamu ke CSV. Biarkan AI menganalisis letak plateau atau kesalahan rasio volume latihanmu.' },
     { title: 'Program Editor', desc: 'Perhatikan tombol yang disorot ini. Klik untuk mengkustomisasi program (<i>drag-and-drop</i> urutan, ubah alat, set reps).' },
-    { title: 'Drag & Drop', desc: 'Placeholder' }, // Di-handle custom di UI Step 5
+    { title: 'Drag & Drop', desc: 'Placeholder' }, 
     { title: '04. Program Dates', desc: '<span class="text-primary font-bold">PENTING:</span> Atur tanggal mulai programmu di sini. Sistem akan menghitung Week 1, Week 2, dst secara otomatis berdasarkan tanggal ini.' },
     { title: '05. Weekly Schedule', desc: '<span class="text-primary font-bold">PENTING:</span> Atur hari apa saja kamu latihan (ON) dan libur (OFF). Data tidak akan hilang meskipun harinya dimatikan.' }
 ];
@@ -107,15 +147,13 @@ const updatePosition = () => {
     }
 };
 
-// ─── DYNAMIC STYLE COMPUTATIONS ───
 function getUnifiedTooltipStyle() {
     if (!targetRect.value) return {};
     const isMob = windowWidth.value < 768;
     
-    // Untuk Langkah 6 & 7 (Kartu Profile Raksasa), letakkan Tooltip menumpang di dalam sorotan kartu
     if (step.value >= 6) {
         let top = targetRect.value.top + 40; 
-        if (top < 80) top = 80; // Cegah tertutup navbar
+        if (top < 80) top = 80; 
         
         let left = '16px';
         if (!isMob) {
@@ -124,7 +162,6 @@ function getUnifiedTooltipStyle() {
         return { top: top + 'px', left, right: 'auto' };
     }
 
-    // Untuk Langkah 1-4
     let top = targetRect.value.bottom + (step.value === 4 ? 16 : 8);
     if (isMob) {
         return { top: top + 'px', left: '16px' }; 
@@ -180,7 +217,6 @@ function getStep5Style() {
     }
 }
 
-// ─── TOUR ENGINE ───
 watch(step, async (newVal) => {
     if (typeof window === 'undefined') return;
     const isMob = window.innerWidth < 768;
@@ -191,7 +227,6 @@ watch(step, async (newVal) => {
         isMenuOpen.value = false;
     }
 
-    // Auto-Scroll Presisi
     setTimeout(() => {
         if (targetId.value) {
             const el = document.getElementById(targetId.value);
@@ -201,7 +236,6 @@ watch(step, async (newVal) => {
         }
     }, 300);
 
-    // Restart Radar
     if (positionInterval) clearInterval(positionInterval);
     let attempts = 0;
     positionInterval = setInterval(() => {
@@ -235,7 +269,6 @@ async function nextStep() {
         await navigateTo(`${targetPath}?tour=step5`);
     } else if (step.value === 5) {
         step.value = 6;
-        // Pindah ke Profile. Karena ini unmount halaman Log, Sidebar akan otomatis menutup.
         await navigateTo('/profile?tour=step6');
     } else if (step.value < 7) {
         step.value++;
@@ -244,19 +277,7 @@ async function nextStep() {
     }
 }
 
-async function finishTour() {
-    completeTour();
-    // await navigateTo('/'); 
+function finishTour() {
+    localIsActive.value = false;
 }
 </script>
-
-<style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-@keyframes bounceIn {
-    0% { transform: scale(0.9); opacity: 0; }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); opacity: 1; }
-}
-.animate-bounce-in { animation: bounceIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-</style>
