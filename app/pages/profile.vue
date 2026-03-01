@@ -150,17 +150,24 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        
                         <div class="bg-[#fcfbf7] border-2 border-separator p-8 flex flex-col justify-between hover:border-primary transition-colors group">
                             <div>
                                 <h3 class="font-black uppercase text-lg mb-2">Data Export</h3>
                                 <p class="font-mono text-sm text-foreground-text mb-6 leading-relaxed">
-                                    Unduh seluruh history latihan dan berat badanmu (JSON format) untuk keperluan backup atau migrasi server.
+                                    Unduh history latihan dan berat badanmu dalam format CSV terpisah agar kolom tabel rapi saat dibuka di Spreadsheet.
                                 </p>
                             </div>
-                            <button @click="downloadBackup" :disabled="isDownloading" class="w-full py-3 bg-white border-2 border-foreground-primary text-foreground-primary font-bold text-sm uppercase tracking-wider hover:bg-foreground-primary hover:text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 group-hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                                <Download class="w-4 h-4" />
-                                {{ isDownloading ? 'Exporting...' : 'Download JSON' }}
-                            </button>
+                            <div class="flex flex-col gap-3">
+                                <button @click="downloadBackup('workouts')" :disabled="isDownloading" class="w-full py-3 bg-white border-2 border-foreground-primary text-foreground-primary font-bold text-xs uppercase tracking-wider hover:bg-foreground-primary hover:text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 group-hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                                    <Download class="w-4 h-4" />
+                                    {{ isDownloading ? 'Exporting...' : 'Export Workouts (CSV)' }}
+                                </button>
+                                <button @click="downloadBackup('weight')" :disabled="isDownloading" class="w-full py-3 bg-white border-2 border-foreground-primary text-foreground-primary font-bold text-xs uppercase tracking-wider hover:bg-foreground-primary hover:text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 group-hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                                    <Download class="w-4 h-4" />
+                                    {{ isDownloading ? 'Exporting...' : 'Export Weight Log (CSV)' }}
+                                </button>
+                            </div>
                         </div>
 
                         <div class="bg-[#fcfbf7] border-2 border-separator p-8 flex flex-col justify-between hover:border-primary transition-colors group">
@@ -215,17 +222,65 @@ async function changePassword() {
     } finally { isChangingPass.value = false; }
 }
 
+// ─── PERBAIKAN: CSV PARSER 2.0 (DIPISAH BERDASARKAN JENIS) ───
 const isDownloading = ref(false);
-async function downloadBackup() {
+async function downloadBackup(type: 'workouts' | 'weight') {
     isDownloading.value = true;
     try {
         const res = await secureFetch('/api/export/all');
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(res, null, 2));
+        
+        let csv = "";
+        
+        // Helper untuk mencegah error CSV jika ada tanda koma/kutip di dalam text notes
+        const escape = (val: any) => {
+             if (val === null || val === undefined) return "";
+             const str = String(val);
+             if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+                 return `"${str.replace(/"/g, '""')}"`;
+             }
+             return str;
+        };
+
+        let filename = "";
+
+        if (type === 'workouts') {
+            // Header khusus Latihan
+            csv = "MODE,WEEK,DAY,DATE,TIME,EXERCISE_NAME,SET1,SET2,SET3,SET4,COMPLETED,EXERCISE_NOTES,SESSION_NOTES\n";
+            
+            (res.gym_sessions || []).forEach((row: any) => {
+                 csv += `GYM,${escape(row.week)},${escape(row.day)},${escape(row.date)},${escape(row.time)},${escape(row.exercise_name)},${escape(row.set1)},${escape(row.set2)},${escape(row.set3)},${escape(row.set4)},${escape(row.completed)},${escape(row.notes)},${escape(row.session_note)}\n`;
+            });
+
+            (res.calist_sessions || []).forEach((row: any) => {
+                 csv += `CALISTHENICS,${escape(row.week)},${escape(row.day)},${escape(row.date)},${escape(row.time)},${escape(row.exercise_name)},${escape(row.set1)},${escape(row.set2)},${escape(row.set3)},${escape(row.set4)},${escape(row.completed)},${escape(row.notes)},${escape(row.session_note)}\n`;
+            });
+            
+            filename = `bodylog_workouts_${new Date().toISOString().split('T')[0]}.csv`;
+        } else {
+            // Header khusus Berat Badan
+            csv = "WEEK,DATE,WEIGHT_KG,NOTES\n";
+            
+            (res.weight_entries || []).forEach((row: any) => {
+                 csv += `${escape(row.week)},${escape(row.date)},${escape(row.weight)},${escape(row.notes)}\n`;
+            });
+            
+            filename = `bodylog_weight_${new Date().toISOString().split('T')[0]}.csv`;
+        }
+
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
         const el = document.createElement('a');
-        el.setAttribute("href", dataStr);
-        el.setAttribute("download", `bodylog_backup_${new Date().toISOString().split('T')[0]}.json`);
+        el.setAttribute("href", url);
+        el.setAttribute("download", filename);
+        document.body.appendChild(el);
         el.click();
-    } catch { alert("Failed to download backup."); } finally { isDownloading.value = false; }
+        document.body.removeChild(el);
+        URL.revokeObjectURL(url);
+    } catch { 
+        alert("Failed to download CSV backup."); 
+    } finally { 
+        isDownloading.value = false; 
+    }
 }
 
 const gymStartDate = ref(''); const calistStartDate = ref('');
@@ -270,7 +325,10 @@ const defaultSchedule = {
 
 const schedule = ref(JSON.parse(JSON.stringify(defaultSchedule)));
 const rawConfig = ref({ gym: {} as Record<string, any>, calist: {} as Record<string, any> });
-const isSavingSchedule = ref(false); const schedMsg = ref(''); const schedStatus = ref<'error' | 'success'>('success');
+
+const isSavingSchedule = ref(false);
+const schedMsg = ref('');
+const schedStatus = ref<'error' | 'success'>('success');
 
 async function loadSettings() {
     try {
@@ -305,10 +363,12 @@ async function loadSettings() {
 }
 
 async function saveSchedule() {
-    isSavingSchedule.value = true; schedMsg.value = '';
+    isSavingSchedule.value = true;
+    schedMsg.value = '';
     try {
         const mode = scheduleMode.value;
         const configToSave = { ...rawConfig.value[mode] }; 
+
         ALL_DAYS.forEach(day => {
             configToSave[day] = {
                 ...(configToSave[day] || {}), 
@@ -317,12 +377,20 @@ async function saveSchedule() {
                 isRest: schedule.value[mode][day].isRest
             };
         });
-        await secureFetch('/api/program/save', { method: 'POST', body: { mode, config: configToSave } });
+
+        await secureFetch('/api/program/save', {
+            method: 'POST',
+            body: { mode, config: configToSave }
+        });
+
         rawConfig.value[mode] = configToSave;
         schedStatus.value = 'success';
         schedMsg.value = `✓ Global Schedule for ${mode.toUpperCase()} saved.`;
     } catch (e: any) {
-        schedStatus.value = 'error'; schedMsg.value = e.data?.message || 'Failed to save schedule.';
-    } finally { isSavingSchedule.value = false; }
+        schedStatus.value = 'error';
+        schedMsg.value = e.data?.message || 'Failed to save schedule.';
+    } finally {
+        isSavingSchedule.value = false;
+    }
 }
 </script>

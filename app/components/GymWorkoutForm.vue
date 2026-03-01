@@ -425,8 +425,7 @@ function onProgramSaved(updatedExercises: SidebarExercise[]) {
     showProgramEditor.value = false;
 }
 
-function parseVariants(name: string, equipment: string[]): string[] | null {
-    if (equipment && equipment.length > 0) return equipment;
+function parseVariants(name: string): string[] | null {
     if (name.includes(" / ")) return name.split(" / ").map(v => v.trim());
     return null;
 }
@@ -446,7 +445,8 @@ function initializeExercises() {
         return;
     }
     exercises.value = template.exercises.map((ex: any) => {
-        const variants = parseVariants(ex.name, ex.equipment);
+        // PERBAIKAN: Hanya kirim ex.name
+        const variants = parseVariants(ex.name);
         return {
             name: ex.name,
             variants: variants || undefined,
