@@ -22,15 +22,16 @@
             </div>
 
             <div class="flex items-center gap-3 flex-wrap">
-                <!-- ── EDIT PROGRAM BUTTON ── -->
                 <button
-    id="tour-edit-btn"
-    v-if="isAuthenticated && exercises.length > 0"
-    @click="openProgramEditor"
-    class="flex items-center gap-2 px-4 py-2 border-2 border-separator rounded-xl font-bold text-xs uppercase tracking-widest text-foreground-text hover:border-primary hover:text-primary transition-all group"
->
-                <Pencil class="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
-                    Edit Program
+                    id="tour-edit-btn"
+                    v-if="exercises.length > 0"
+                    @click="handleEditClick"
+                    class="flex items-center gap-2 px-4 py-2 border-2 border-separator rounded-xl font-bold text-xs uppercase tracking-widest text-foreground-text hover:border-primary hover:text-primary transition-all group"
+                >
+                    <Lock v-if="!isAuthenticated" class="w-4 h-4 opacity-50" />
+                    <Settings2 v-else class="w-4 h-4 group-hover:rotate-90 transition-transform" />
+                    <span class="hidden md:inline">Edit Program</span>
+                    <span class="md:hidden">Edit</span>
                 </button>
 
                 <div v-if="lastSaved" class="px-4 py-2 border border-separator rounded-full bg-background flex items-center gap-2">
@@ -52,7 +53,6 @@
 
         <form v-else @submit.prevent="saveWorkout" class="divide-y divide-separator">
 
-            <!-- ─── SESSION NOTE ─── -->
             <div class="p-6 md:p-8 bg-[#fffef5] border-b border-yellow-200">
                 <button
                     type="button"
@@ -79,7 +79,6 @@
                 </div>
             </div>
 
-            <!-- ─── EXERCISES ─── -->
             <div
                 v-for="(exercise, exIdx) in exercises"
                 :key="exIdx"
@@ -88,7 +87,6 @@
                 <div class="flex justify-between items-start mb-4 gap-4">
                     <div class="flex flex-col gap-1 w-full">
 
-                        <!-- Target reps hint (from program editor) -->
                         <div v-if="exercise.targetReps && exercise.targetReps > 0" class="inline-flex items-center gap-1.5 w-fit mb-1">
                             <span class="font-mono text-[10px] text-foreground-text/50 uppercase tracking-widest">Target:</span>
                             <span class="font-mono text-[10px] font-bold text-primary px-1.5 py-0.5 bg-primary/10 rounded">
@@ -110,7 +108,6 @@
                             </span>
                         </div>
 
-                        <!-- Substitution radio buttons -->
                         <div v-if="exercise.subs" class="flex flex-wrap gap-2 mt-2">
                             <label
                                 v-for="sub in exercise.subs"
@@ -168,7 +165,6 @@
                     </div>
                 </div>
 
-                <!-- Last week reference -->
                 <div v-if="lastWeekData[exIdx]" class="mb-4 p-3 bg-background rounded border border-separator">
                     <span class="font-mono text-xs uppercase tracking-wider text-foreground-text opacity-70">
                         Last Week (W{{ week - 1 }}):
@@ -187,7 +183,6 @@
                     </div>
                 </div>
 
-                <!-- Set inputs -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div v-for="(set, setIdx) in exercise.sets" :key="setIdx" class="flex items-center gap-2">
                         <span class="font-mono text-xs text-primary w-6 pt-1">S{{ setIdx + 1 }}</span>
@@ -206,20 +201,18 @@
                 </div>
             </div>
 
-            <!-- ─── PLANCHE MILESTONE TRACKER ─── -->
             <div class="p-6 md:p-8 bg-primary/5 border-b border-primary/20">
                 <div class="flex items-start gap-3">
                     <Target class="w-5 h-5 text-primary shrink-0 mt-0.5" />
                     <div>
-                        <p class="font-bold text-sm text-foreground-primary">Planche Milestone Tracker</p>
+                        <p class="font-bold text-sm text-foreground-primary">Skill & Milestone Tracker</p>
                         <p class="font-mono text-xs text-foreground-text opacity-70 mt-1">
-                            W1: Lean 15s · W2: Lean 20s · W3: Tuck 10s · W4: Tuck 15s solid
+                            Fokus pada form dan hold time. Tambah waktu hold 2-5 detik atau transisi ke progresi yang lebih berat secara bertahap saat form kamu sudah solid.
                         </p>
                     </div>
                 </div>
             </div>
 
-            <!-- ─── SUBMIT ─── -->
             <div class="p-8 bg-background">
                 <div class="flex flex-col md:flex-row items-center justify-between gap-6">
                     <label class="flex items-center gap-3 cursor-pointer group">
@@ -240,7 +233,6 @@
             </div>
         </form>
 
-        <!-- ─── LOGGING RULES MODAL ─── -->
         <transition name="fade">
             <div
                 v-if="showRules"
@@ -281,7 +273,6 @@
             </div>
         </transition>
 
-        <!-- ─── PROGRAM EDITOR SIDEBAR ─── -->
         <ProgramEditorSidebar
             :open="showProgramEditor"
             mode="calist"
@@ -294,9 +285,8 @@
 </template>
 
 <script setup lang="ts">
-import { BedDouble, Check, MessageSquare, ChevronDown, Target, Youtube, Info, X, Pencil } from "lucide-vue-next";
+import { BedDouble, Check, MessageSquare, ChevronDown, Target, Youtube, Info, X, Pencil, Lock, Settings2 } from "lucide-vue-next";
 
-// ─── UI Types ───
 interface UISet { value: number; }
 interface SubOption { label: string; value: string; }
 
@@ -308,7 +298,7 @@ interface UIExercise {
     selectedSub?: string;
     note?: string;
     showNote?: boolean;
-    targetReps?: number;   // from program editor
+    targetReps?: number;
 }
 
 interface SidebarExercise {
@@ -320,13 +310,11 @@ interface SidebarExercise {
     type: 'reps' | 'hold';
 }
 
-// ─── Props / Emits ───
 const props = defineProps<{ week: number; day: string; }>();
 const emit = defineEmits(["saved"]);
 const { isAuthenticated, secureFetch } = useAuth();
 const route = useRoute();
 
-// ─── State ───
 const exercises = ref<UIExercise[]>([]);
 const completed = ref(false);
 const saving = ref(false);
@@ -337,220 +325,97 @@ const sessionNote = ref("");
 const showSessionNote = ref(false);
 const showRules = ref(false);
 
-// ─── Program editor state ───
 const showProgramEditor = ref(false);
 const sidebarExercises = ref<SidebarExercise[]>([]);
 
-// ─── Custom program from DB ───
-// Enriched format: { [day]: { exercises: [{ name, setCount, targetReps, equipment, type }] } }
-const customProgram = ref<Record<string, { exercises: any[] }> | null>(null);
+const customProgram = ref<Record<string, { exercises?: any[], name?: string, focus?: string, isRest?: boolean }> | null>(null);
 
-// ─── Program Defaults ───
 interface ExerciseDef {
     name: string;
     type: 'reps' | 'hold';
     setCount: number;
     targetReps?: number;
     subs?: SubOption[];
-    equipment?: string[];  // for sidebar compatibility
+    equipment?: string[]; 
 }
 
-const programDefaults: Record<string, { name: string; focus: string; exercises: ExerciseDef[] }> = {
-    monday: {
-        name: "SENIN",
-        focus: "Pull — Back Width",
-        exercises: [
-            { name: "Scapular Pull-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Pull-up Bar"] },
-            { name: "Wide Grip Pull-up", type: "reps", setCount: 4, targetReps: 6, equipment: ["Pull-up Bar"] },
-            {
-                name: "Band Face Pull",
-                type: "reps",
-                setCount: 3,
-                targetReps: 15,
-                equipment: ["Band"],
-                subs: [
-                    { label: "Band Face Pull", value: "Band Face Pull" },
-                    { label: "Scapular Pull-up (no band)", value: "Scapular Pull-up (sub)" },
-                ],
-            },
-            { name: "Hollow Body Hold", type: "hold", setCount: 3, targetReps: 20, equipment: ["Floor"] },
-        ],
-    },
-    wednesday: {
-        name: "RABU",
-        focus: "Push + Planche Foundation",
-        exercises: [
-            {
-                name: "Planche Lean",
-                type: "hold",
-                setCount: 4,
-                targetReps: 15,
-                equipment: ["Parallettes", "Floor"],
-                subs: [
-                    { label: "Parallettes", value: "Planche Lean (Parallettes)" },
-                    { label: "Floor (fist)", value: "Planche Lean (Floor)" },
-                ],
-            },
-            {
-                name: "Push-up (Parallettes)",
-                type: "reps",
-                setCount: 4,
-                targetReps: 10,
-                equipment: ["Parallettes", "Floor"],
-                subs: [
-                    { label: "Parallettes", value: "Push-up (Parallettes)" },
-                    { label: "Floor Push-up", value: "Push-up (Floor)" },
-                ],
-            },
-            { name: "Pike Push-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Floor"] },
-            {
-                name: "Band Lateral Raise",
-                type: "reps",
-                setCount: 4,
-                targetReps: 15,
-                equipment: ["Band"],
-                subs: [
-                    { label: "Band Lateral Raise", value: "Band Lateral Raise" },
-                    { label: "Pike Push-up +1 set (no band)", value: "Pike Push-up (sub lateral)" },
-                ],
-            },
-        ],
-    },
-    friday: {
-        name: "JUMAT",
-        focus: "Pull 2 + Planche Skill",
-        exercises: [
-            {
-                name: "Tuck Planche Hold",
-                type: "hold",
-                setCount: 4,
-                targetReps: 10,
-                equipment: ["Parallettes", "Floor"],
-                subs: [
-                    { label: "Parallettes", value: "Tuck Planche Hold (Parallettes)" },
-                    { label: "Floor (fist)", value: "Tuck Planche Hold (Floor)" },
-                ],
-            },
-            { name: "Chin-up", type: "reps", setCount: 4, targetReps: 6, equipment: ["Pull-up Bar"] },
-            {
-                name: "L-sit",
-                type: "hold",
-                setCount: 3,
-                targetReps: 10,
-                equipment: ["Parallettes", "Floor"],
-                subs: [
-                    { label: "Parallettes", value: "L-sit (Parallettes)" },
-                    { label: "Floor (tuck)", value: "L-sit (Floor tuck)" },
-                ],
-            },
-            {
-                name: "Band Hammer Curl",
-                type: "reps",
-                setCount: 3,
-                targetReps: 12,
-                equipment: ["Band"],
-                subs: [
-                    { label: "Band Hammer Curl", value: "Band Hammer Curl" },
-                    { label: "Neutral Grip Chin-up Negatives (no band)", value: "Chin-up Negatives (sub)" },
-                ],
-            },
-        ],
-    },
-    saturday: {
-        name: "SABTU",
-        focus: "Legs + Core",
-        exercises: [
-            { name: "Pistol Squat", type: "reps", setCount: 4, targetReps: 6, equipment: ["Floor"] },
-            { name: "Nordic Curl", type: "reps", setCount: 3, targetReps: 5, equipment: ["Floor"] },
-            { name: "Single Leg Calf Raise", type: "reps", setCount: 3, targetReps: 20, equipment: ["Floor"] },
-            {
-                name: "Planche Lean",
-                type: "hold",
-                setCount: 3,
-                targetReps: 15,
-                equipment: ["Parallettes", "Floor"],
-                subs: [
-                    { label: "Parallettes", value: "Planche Lean (Parallettes)" },
-                    { label: "Floor (fist)", value: "Planche Lean (Floor)" },
-                ],
-            },
-        ],
-    },
-    sunday: {
-        name: "MINGGU",
-        focus: "Shoulders + Arms + Wrist Rehab",
-        exercises: [
-            { name: "Pike Push-up (Feet Elevated)", type: "reps", setCount: 4, targetReps: 8, equipment: ["Floor"] },
-            {
-                name: "Band Lateral Raise",
-                type: "reps",
-                setCount: 4,
-                targetReps: 15,
-                equipment: ["Band"],
-                subs: [
-                    { label: "Band Lateral Raise", value: "Band Lateral Raise" },
-                    { label: "Pike Push-up +1 set (no band)", value: "Pike Push-up (sub lateral)" },
-                ],
-            },
-            {
-                name: "Band Curl",
-                type: "reps",
-                setCount: 3,
-                targetReps: 12,
-                equipment: ["Band"],
-                subs: [
-                    { label: "Band Curl", value: "Band Curl" },
-                    { label: "Chin-up Negatives (no band)", value: "Chin-up Negatives (sub curl)" },
-                ],
-            },
-            { name: "Wrist Conditioning", type: "hold", setCount: 3, targetReps: 30, equipment: ["Floor"] },
-        ],
-    },
+const programDefaults: Record<string, { isRest: boolean; name: string; focus: string; exercises: ExerciseDef[] }> = {
+    monday: { isRest: false, name: "FULL BODY A", focus: "Pull-ups & Push-ups", exercises: [
+        { name: "Pull-up", type: "reps", setCount: 4, targetReps: 8, equipment: ["Pull-up Bar"], subs: [{label: "Pull-up", value: "Pull-up"}, {label: "Band Assisted", value: "Band Pull-up"}] },
+        { name: "Push-up", type: "reps", setCount: 4, targetReps: 12, equipment: ["Floor"], subs: [{label: "Standard", value: "Push-up"}, {label: "Knee Push-up", value: "Knee Push-up"}] },
+        { name: "Pistol Squat Progression", type: "reps", setCount: 3, targetReps: 8, equipment: ["Floor"] },
+        { name: "Hollow Body Hold", type: "hold", setCount: 3, targetReps: 30, equipment: ["Floor"] },
+    ]},
+    tuesday: { isRest: true, name: "FULL BODY B", focus: "Chin-ups & Dips", exercises: [
+        { name: "Chin-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Pull-up Bar"] },
+        { name: "Parallel Bar Dips", type: "reps", setCount: 3, targetReps: 10, equipment: ["Dip Bar", "Parallettes"] },
+        { name: "Walking Lunges", type: "reps", setCount: 3, targetReps: 12, equipment: ["Floor"] },
+        { name: "L-Sit Progression", type: "hold", setCount: 3, targetReps: 15, equipment: ["Parallettes", "Floor"] },
+    ]},
+    wednesday: { isRest: false, name: "FULL BODY C", focus: "Rows & Pike Push", exercises: [
+        { name: "Inverted Row", type: "reps", setCount: 3, targetReps: 10, equipment: ["Rings", "Pull-up Bar"] },
+        { name: "Pike Push-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Floor"] },
+        { name: "Nordic Curl Negatives", type: "reps", setCount: 3, targetReps: 5, equipment: ["Floor"] },
+        { name: "Plank", type: "hold", setCount: 3, targetReps: 60, equipment: ["Floor"] },
+    ]},
+    thursday: { isRest: true, name: "FULL BODY A", focus: "Pull-ups & Push-ups", exercises: [
+        { name: "Pull-up", type: "reps", setCount: 4, targetReps: 8, equipment: ["Pull-up Bar"], subs: [{label: "Pull-up", value: "Pull-up"}, {label: "Band Assisted", value: "Band Pull-up"}] },
+        { name: "Push-up", type: "reps", setCount: 4, targetReps: 12, equipment: ["Floor"], subs: [{label: "Standard", value: "Push-up"}, {label: "Knee Push-up", value: "Knee Push-up"}] },
+        { name: "Pistol Squat Progression", type: "reps", setCount: 3, targetReps: 8, equipment: ["Floor"] },
+        { name: "Hollow Body Hold", type: "hold", setCount: 3, targetReps: 30, equipment: ["Floor"] },
+    ]},
+    friday: { isRest: false, name: "FULL BODY B", focus: "Chin-ups & Dips", exercises: [
+        { name: "Chin-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Pull-up Bar"] },
+        { name: "Parallel Bar Dips", type: "reps", setCount: 3, targetReps: 10, equipment: ["Dip Bar", "Parallettes"] },
+        { name: "Walking Lunges", type: "reps", setCount: 3, targetReps: 12, equipment: ["Floor"] },
+        { name: "L-Sit Progression", type: "hold", setCount: 3, targetReps: 15, equipment: ["Parallettes", "Floor"] },
+    ]},
+    saturday: { isRest: true, name: "FULL BODY C", focus: "Rows & Pike Push", exercises: [
+        { name: "Inverted Row", type: "reps", setCount: 3, targetReps: 10, equipment: ["Rings", "Pull-up Bar"] },
+        { name: "Pike Push-up", type: "reps", setCount: 3, targetReps: 8, equipment: ["Floor"] },
+        { name: "Nordic Curl Negatives", type: "reps", setCount: 3, targetReps: 5, equipment: ["Floor"] },
+        { name: "Plank", type: "hold", setCount: 3, targetReps: 60, equipment: ["Floor"] },
+    ]},
+    sunday: { isRest: true, name: "FULL BODY D", focus: "Skills & Core", exercises: [
+        { name: "Handstand Practice", type: "hold", setCount: 3, targetReps: 30, equipment: ["Floor"] },
+        { name: "Front Lever Progression", type: "hold", setCount: 3, targetReps: 15, equipment: ["Parallettes", "Pull-up Bar"] },
+        { name: "Arch Body Hold", type: "hold", setCount: 3, targetReps: 30, equipment: ["Floor"] },
+        { name: "Skin the Cat", type: "reps", setCount: 3, targetReps: 5, equipment: ["Rings", "Pull-up Bar"] },
+    ]}
 };
 
-// ─── Effective templates (custom overrides defaults) ───
-const effectiveTemplates = computed(() => {
-    if (!customProgram.value) return programDefaults;
-    const result: typeof programDefaults = {};
+const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-    for (const [day, template] of Object.entries(programDefaults)) {
-        const custom = customProgram.value[day];
-        if (!custom?.exercises?.length) {
-            result[day] = template;
-            continue;
-        }
-        result[day] = {
-            ...template,
-            exercises: custom.exercises.map((customEx: any, idx: number) => {
-                const def = template.exercises[idx];
-                if (!def) {
-                    // New exercise added via sidebar
+const effectiveTemplates = computed(() => {
+    const result: Record<string, any> = {};
+    for (const day of ALL_DAYS) {
+        const def = programDefaults[day] || { name: "REST DAY", focus: "Recover", exercises: [], isRest: true };
+        const custom = customProgram.value?.[day];
+
+        const isRest = custom?.isRest !== undefined ? custom.isRest : def.isRest;
+
+        if (isRest) {
+            result[day] = { name: "REST DAY", focus: "Recover", exercises: [] };
+        } else if (custom) {
+            result[day] = {
+                name: custom.name || def.name,
+                focus: custom.focus || def.focus,
+                exercises: custom.exercises && custom.exercises.length > 0 ? custom.exercises.map((customEx: any, idx: number) => {
+                    const fallbackDef = def.exercises?.[idx];
                     return {
-                        name: customEx.name,
-                        type: customEx.type || 'reps',
-                        setCount: customEx.setCount ?? customEx.sets ?? 3,
-                        targetReps: customEx.targetReps ?? 10,
-                        // equipment → subs: each equipment string becomes a sub option
-                        subs: customEx.equipment?.length > 0
-                            ? customEx.equipment.map((eq: string) => ({ label: eq, value: eq }))
-                            : undefined,
-                        equipment: customEx.equipment ?? [],
+                        ...fallbackDef,
+                        name: customEx.name || fallbackDef?.name || '',
+                        type: customEx.type || fallbackDef?.type || 'reps',
+                        setCount: customEx.setCount ?? customEx.sets ?? fallbackDef?.setCount ?? 3,
+                        targetReps: customEx.targetReps ?? fallbackDef?.targetReps ?? 10,
+                        subs: customEx.equipment?.length > 0 ? customEx.equipment.map((eq: string) => ({ label: eq, value: eq })) : fallbackDef?.subs,
+                        equipment: customEx.equipment ?? fallbackDef?.equipment ?? [],
                     };
-                }
-                return {
-                    ...def,
-                    name: customEx.name || def.name,
-                    type: customEx.type || def.type,
-                    setCount: customEx.setCount ?? customEx.sets ?? def.setCount,
-                    targetReps: customEx.targetReps ?? def.targetReps,
-                    // equipment from sidebar overrides subs if provided
-                    subs: customEx.equipment?.length > 0
-                        ? customEx.equipment.map((eq: string) => ({ label: eq, value: eq }))
-                        : def.subs,
-                    equipment: customEx.equipment ?? def.equipment ?? [],
-                };
-            }),
-        };
+                }) : def.exercises || [],
+            };
+        } else {
+            result[day] = def;
+        }
     }
     return result;
 });
@@ -558,27 +423,34 @@ const effectiveTemplates = computed(() => {
 const dayName  = computed(() => effectiveTemplates.value[props.day]?.name  || "REST DAY");
 const dayFocus = computed(() => effectiveTemplates.value[props.day]?.focus || "Recover");
 
-// ─── Open program editor ───
+function handleEditClick() {
+    if (!isAuthenticated.value) {
+        alert("PREVIEW MODE: Silakan login untuk mengkustomisasi program dan alat.");
+        navigateTo('/login');
+        return;
+    }
+    openProgramEditor();
+}
+
 function openProgramEditor() {
     const template = effectiveTemplates.value[props.day];
     if (!template) return;
 
-    sidebarExercises.value = template.exercises.map((def, idx) => ({
+    sidebarExercises.value = template.exercises.map((def: any, idx: number) => ({
         id: `ex-calist-${props.day}-${idx}`,
         name: def.name,
         sets: def.setCount,
         targetReps: def.targetReps ?? 10,
-        // subs → equipment for sidebar (show sub options as equipment tags)
-        equipment: def.equipment ?? (def.subs ? def.subs.map(s => s.label) : []),
+        equipment: def.equipment ?? (def.subs ? def.subs.map((s: any) => s.label) : []),
         type: def.type,
     }));
     showProgramEditor.value = true;
 }
 
-// ─── When sidebar saves ───
 function onProgramSaved(updatedExercises: SidebarExercise[]) {
     if (!customProgram.value) customProgram.value = {};
     customProgram.value[props.day] = {
+        ...customProgram.value[props.day], 
         exercises: updatedExercises.map(ex => ({
             name: ex.name,
             setCount: ex.sets,
@@ -591,7 +463,6 @@ function onProgramSaved(updatedExercises: SidebarExercise[]) {
     showProgramEditor.value = false;
 }
 
-// ─── Helpers ───
 function effectiveName(ex: UIExercise): string {
     return ex.selectedSub || ex.name;
 }
@@ -617,11 +488,10 @@ function toggleNote(index: number) {
     exercises.value[index].showNote = !exercises.value[index].showNote;
 }
 
-// ─── Initialization ───
 function initializeExercises() {
     const template = effectiveTemplates.value[props.day];
     if (!template) { exercises.value = []; return; }
-    exercises.value = template.exercises.map((def) => ({
+    exercises.value = template.exercises.map((def: any) => ({
         name: def.name,
         type: def.type,
         sets: Array(def.setCount).fill(null).map(() => ({ value: 0 })),
@@ -633,7 +503,6 @@ function initializeExercises() {
     }));
 }
 
-// ─── Load last week data ───
 async function loadLastWeekData() {
     if (props.week <= 1) { lastWeekData.value = {}; return; }
     try {
@@ -645,7 +514,7 @@ async function loadLastWeekData() {
             const template = effectiveTemplates.value[props.day];
             const dataMap: Record<number, { sets: string[]; savedName: string }> = {};
 
-            template?.exercises.forEach((def, idx) => {
+            template?.exercises.forEach((def: any, idx: number) => {
                 const possibleNames = allPossibleNames(def);
                 let exerciseRow: any = null;
                 for (const n of possibleNames) {
@@ -665,7 +534,6 @@ async function loadLastWeekData() {
     }
 }
 
-// ─── Load current session ───
 async function loadCurrentSession() {
     try {
         if (dayName.value === "REST DAY") return;
@@ -701,7 +569,6 @@ async function loadCurrentSession() {
     }
 }
 
-// ─── Save ───
 async function saveWorkout() {
     if (dayName.value === "REST DAY") return;
     if (!isAuthenticated.value) { navigateTo("/login"); return; }
@@ -743,11 +610,9 @@ async function saveWorkout() {
     }
 }
 
-// ─── Lifecycle ───
 onMounted(async () => {
     try {
-        // BUG-04 FIX: pass ?mode=calist to avoid 400
-        const res = await $fetch('/api/program/get?mode=calist') as { config: any; start_date: string | null };
+        const res = await secureFetch('/api/program/get?mode=calist') as { config: any; start_date: string | null };
         if (res.config) customProgram.value = res.config;
     } catch { /* fall through to defaults */ }
 

@@ -1,5 +1,4 @@
 <template>
-    <!-- ─── BACKDROP (mobile only) ─── -->
     <transition name="backdrop-fade">
         <div
             v-if="open"
@@ -8,7 +7,6 @@
         />
     </transition>
 
-    <!-- ─── DRAWER PANEL ─── -->
     <transition :name="isMobile ? 'sheet-slide' : 'drawer-slide'">
         <div
             id="program-editor-sidebar"
@@ -22,12 +20,10 @@
                 'shadow-[-8px_0px_0px_0px_rgba(0,0,0,0.08)] md:shadow-[-8px_0px_40px_rgba(0,0,0,0.15)]',
             ]"
         >
-            <!-- ── Mobile drag pill ── -->
             <div class="flex justify-center pt-3 pb-1 md:hidden">
                 <div class="w-10 h-1 bg-separator rounded-full"></div>
             </div>
 
-            <!-- ── Header ── -->
             <div class="px-6 py-4 border-b-2 border-foreground-primary flex items-center justify-between shrink-0 bg-[#fcfbf7]">
                 <div>
                     <p class="font-mono text-[10px] uppercase tracking-widest text-primary">
@@ -40,7 +36,6 @@
                 </button>
             </div>
 
-            <!-- ── Active palette indicator ── -->
             <transition name="indicator-slide">
                 <div
                     v-if="activePaletteItem"
@@ -59,10 +54,8 @@
                 </div>
             </transition>
 
-            <!-- ── Scrollable body ── -->
             <div class="flex-1 overflow-y-auto overscroll-contain">
 
-                <!-- ──── SECTION 1: EXERCISES ──── -->
                 <div class="p-5 pb-2">
                     <div class="flex items-center justify-between mb-3">
                         <p class="font-mono text-[10px] uppercase tracking-widest text-foreground-text opacity-70">
@@ -73,7 +66,6 @@
                         </span>
                     </div>
 
-                    <!-- Drag-and-drop exercise list -->
                     <div ref="exerciseListRef" class="space-y-2">
                         <div
                             v-for="(ex, idx) in localExercises"
@@ -92,7 +84,6 @@
                             @mouseleave="hoveredCardIdx = null"
                             @click="applyPaletteToCard(idx)"
                         >
-                            <!-- Drop hint overlay when palette active -->
                             <div
                                 v-if="activePaletteItem && hoveredCardIdx === idx"
                                 class="absolute inset-0 rounded-xl bg-primary/10 flex items-center justify-center pointer-events-none z-10"
@@ -103,7 +94,6 @@
                             </div>
 
                             <div class="flex items-start gap-3 p-3">
-                                <!-- Drag handle -->
                                 <div class="drag-handle flex flex-col gap-0.5 pt-1.5 cursor-grab active:cursor-grabbing shrink-0 opacity-40 group-hover:opacity-80 transition-opacity">
                                     <span class="w-4 h-0.5 bg-foreground-primary rounded block"></span>
                                     <span class="w-4 h-0.5 bg-foreground-primary rounded block"></span>
@@ -111,7 +101,6 @@
                                 </div>
 
                                 <div class="flex-1 min-w-0">
-                                    <!-- Editable name -->
                                     <input
                                         v-model="ex.name"
                                         type="text"
@@ -120,15 +109,12 @@
                                         @click.stop
                                     />
 
-                                    <!-- Meta: sets × reps + equipment tags -->
                                     <div class="flex flex-wrap items-center gap-1.5 mt-2">
-                                        <!-- Set/rep badge -->
                                         <span class="inline-flex items-center gap-1 font-mono text-[10px] font-bold px-2 py-0.5 bg-primary/10 text-primary rounded border border-primary/20">
                                             {{ ex.sets }}×{{ ex.targetReps === 0 ? '?' : ex.targetReps }}
                                             <span v-if="ex.type === 'hold'" class="text-orange-500">s</span>
                                         </span>
 
-                                        <!-- Type toggle (calist only) -->
                                         <button
                                             v-if="mode === 'calist'"
                                             @click.stop="ex.type = ex.type === 'hold' ? 'reps' : 'hold'"
@@ -143,7 +129,6 @@
                                             {{ ex.type === 'hold' ? '⏱ HOLD' : '🔄 REPS' }}
                                         </button>
 
-                                        <!-- Equipment tags -->
                                         <span
                                             v-for="(eq, eqIdx) in ex.equipment"
                                             :key="eqIdx"
@@ -160,7 +145,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Delete exercise button -->
                                 <button
                                     @click.stop="removeExercise(idx)"
                                     class="shrink-0 p-1.5 text-separator hover:text-red-500 transition-colors mt-0.5"
@@ -171,13 +155,11 @@
                             </div>
                         </div>
 
-                        <!-- Empty state -->
                         <div v-if="localExercises.length === 0" class="py-8 text-center border-2 border-dashed border-separator rounded-xl">
                             <p class="font-mono text-xs text-foreground-text opacity-50">No exercises yet. Add one below.</p>
                         </div>
                     </div>
 
-                    <!-- Add Exercise -->
                     <div class="mt-3">
                         <div v-if="showAddInput" class="flex gap-2">
                             <input
@@ -215,7 +197,6 @@
 
                 <div class="mx-5 border-t border-separator my-3"></div>
 
-                <!-- ──── SECTION 2: SET SCHEMES ──── -->
                 <div class="px-5 pb-2">
                     <p class="font-mono text-[10px] uppercase tracking-widest text-foreground-text opacity-70 mb-3">
                         Set Schemes — tap scheme, then tap a card
@@ -244,7 +225,6 @@
 
                 <div class="mx-5 border-t border-separator my-3"></div>
 
-                <!-- ──── SECTION 3: EQUIPMENT ──── -->
                 <div class="px-5 pb-6">
                     <p class="font-mono text-[10px] uppercase tracking-widest text-foreground-text opacity-70 mb-3">
                         Equipment — tap alat, then tap a card
@@ -266,7 +246,6 @@
                         </button>
                     </div>
 
-                    <!-- Custom equipment input -->
                     <div class="flex gap-2">
                         <input
                             v-model="customEquipmentInput"
@@ -290,7 +269,6 @@
                 </div>
             </div>
 
-            <!-- ── Footer ── -->
             <div class="px-5 py-4 border-t-2 border-separator bg-[#fcfbf7] flex gap-3 shrink-0">
                 <button
                     @click="handleClose"
@@ -333,8 +311,8 @@ interface SetScheme {
 
 interface PaletteItem {
     type: 'scheme' | 'equipment';
-    label?: string;     // for scheme
-    value?: string;     // for equipment
+    label?: string;     
+    value?: string;     
     sets?: number;
     reps?: number;
 }
@@ -400,7 +378,6 @@ watch(
     () => props.open,
     (isOpen) => {
         if (isOpen) {
-            // Deep copy to avoid mutating parent until saved
             localExercises.value = props.exercises.map(ex => ({
                 ...ex,
                 equipment: [...ex.equipment],
@@ -459,9 +436,6 @@ function selectEquipmentTile(eq: string) {
         type: 'equipment',
         value: trimmed,
     };
-    if (trimmed === customEquipmentInput.value) {
-        // keep input for UX but will clear after apply
-    }
 }
 
 function applyPaletteToCard(idx: number) {
@@ -478,13 +452,11 @@ function applyPaletteToCard(idx: number) {
         if (!ex.equipment.includes(val)) {
             ex.equipment.push(val);
         }
-        // Clear custom input after applying
         if (val === customEquipmentInput.value.trim()) {
             customEquipmentInput.value = '';
         }
     }
 
-    // Deselect palette after apply
     activePaletteItem.value = null;
 }
 
@@ -523,14 +495,8 @@ function removeEquipment(exIdx: number, eqIdx: number) {
 async function saveProgram() {
     isSaving.value = true;
     try {
-        // Build the config object that /api/program/save expects
-        // Format: { [day]: { exercises: [{ name, equipment, sets, targetReps }] } }
         const config: Record<string, { exercises: any[] }> = {};
 
-        // We only send exercises for the current day — merge with full program on server
-        // But since save.post.ts overwrites the whole key, we need the full program.
-        // For simplicity: save the current day's data and let the form reinitialize.
-        // The caller (WorkoutForm) provides the full program, so we rebuild it there.
         config[props.day] = {
             exercises: localExercises.value.map(ex => ({
                 name: ex.name,
@@ -541,10 +507,11 @@ async function saveProgram() {
             })),
         };
 
-        // Get the full existing program first so we don't overwrite other days
         const existing = await secureFetch(`/api/program/get?mode=${props.mode}`) as any;
         const fullConfig = existing?.config ? { ...existing.config } : {};
-        fullConfig[props.day] = config[props.day];
+        
+        // PERBAIKAN: Gabungkan data konfigurasi lama (name, focus, isRest) dengan exercises baru
+        fullConfig[props.day] = { ...fullConfig[props.day], ...config[props.day] };
 
         await secureFetch('/api/program/save', {
             method: 'POST',
@@ -575,45 +542,23 @@ onUnmounted(() => document.removeEventListener('keydown', onKeyDown));
 </script>
 
 <style scoped>
-/* ── Mobile: bottom sheet ── */
 .sheet-slide-enter-active,
-.sheet-slide-leave-active {
-    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-}
+.sheet-slide-leave-active { transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
 .sheet-slide-enter-from,
-.sheet-slide-leave-to {
-    transform: translateY(100%);
-}
+.sheet-slide-leave-to { transform: translateY(100%); }
 
-/* ── Desktop: right drawer ── */
 .drawer-slide-enter-active,
-.drawer-slide-leave-active {
-    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-}
+.drawer-slide-leave-active { transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
 .drawer-slide-enter-from,
-.drawer-slide-leave-to {
-    transform: translateX(100%);
-}
+.drawer-slide-leave-to { transform: translateX(100%); }
 
-/* ── Backdrop ── */
 .backdrop-fade-enter-active,
-.backdrop-fade-leave-active {
-    transition: opacity 0.25s ease;
-}
+.backdrop-fade-leave-active { transition: opacity 0.25s ease; }
 .backdrop-fade-enter-from,
-.backdrop-fade-leave-to {
-    opacity: 0;
-}
+.backdrop-fade-leave-to { opacity: 0; }
 
-/* ── Indicator ── */
 .indicator-slide-enter-active,
-.indicator-slide-leave-active {
-    transition: all 0.2s ease;
-}
+.indicator-slide-leave-active { transition: all 0.2s ease; }
 .indicator-slide-enter-from,
-.indicator-slide-leave-to {
-    opacity: 0;
-    transform: translateY(-6px);
-}
+.indicator-slide-leave-to { opacity: 0; transform: translateY(-6px); }
 </style>
-

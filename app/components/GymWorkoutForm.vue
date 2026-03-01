@@ -18,15 +18,16 @@
             </div>
 
             <div class="flex items-center gap-3 flex-wrap">
-                <!-- ── EDIT PROGRAM BUTTON (BUG-04 + new feature) ── -->
                 <button
-    id="tour-edit-btn"
-    v-if="isAuthenticated && exercises.length > 0"
-    @click="openProgramEditor"
-    class="flex items-center gap-2 px-4 py-2 border-2 border-separator rounded-xl font-bold text-xs uppercase tracking-widest text-foreground-text hover:border-primary hover:text-primary transition-all group"
->
-                    <Pencil class="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
-                    Edit Program
+                    id="tour-edit-btn"
+                    v-if="exercises.length > 0"
+                    @click="handleEditClick"
+                    class="flex items-center gap-2 px-4 py-2 border-2 border-separator rounded-xl font-bold text-xs uppercase tracking-widest text-foreground-text hover:border-primary hover:text-primary transition-all group"
+                >
+                    <Lock v-if="!isAuthenticated" class="w-4 h-4 opacity-50" />
+                    <Settings2 v-else class="w-4 h-4 group-hover:rotate-90 transition-transform" />
+                    <span class="hidden md:inline">Edit Program</span>
+                    <span class="md:hidden">Edit</span>
                 </button>
 
                 <div v-if="lastSaved" class="px-4 py-2 border border-separator rounded-full bg-background flex items-center gap-2">
@@ -74,7 +75,6 @@
                 </div>
             </div>
 
-            <!-- ─── EXERCISES ─── -->
             <div
                 v-for="(exercise, exIdx) in exercises"
                 :key="exIdx"
@@ -83,7 +83,6 @@
                 <div class="flex justify-between items-start mb-4 gap-4">
                     <div class="flex flex-col gap-1 w-full">
 
-                        <!-- Target reps hint (from program editor) -->
                         <div v-if="exercise.targetReps && exercise.targetReps > 0" class="inline-flex items-center gap-1.5 w-fit mb-1">
                             <span class="font-mono text-[10px] text-foreground-text/50 uppercase tracking-widest">Target:</span>
                             <span class="font-mono text-[10px] font-bold text-primary px-1.5 py-0.5 bg-primary/10 rounded">
@@ -95,7 +94,6 @@
                             {{ exercise.variants ? exercise.name : exercise.name }}
                         </h4>
 
-                        <!-- Variant radio buttons (from equipment in program editor) -->
                         <div v-if="exercise.variants && exercise.variants.length > 0" class="flex flex-wrap gap-2 mt-2">
                             <label
                                 v-for="variant in exercise.variants"
@@ -118,7 +116,6 @@
                             </label>
                         </div>
 
-                        <!-- Per-exercise note -->
                         <button
                             type="button"
                             @click="toggleNote(exIdx)"
@@ -154,7 +151,6 @@
                     </div>
                 </div>
 
-                <!-- Last week reference -->
                 <div v-if="lastWeekData[exIdx]" class="mb-4 p-3 bg-background rounded border border-separator">
                     <span class="font-mono text-xs uppercase tracking-wider text-foreground-text opacity-70">
                         Last Week (W{{ week - 1 }}):
@@ -173,7 +169,6 @@
                     </div>
                 </div>
 
-                <!-- Set inputs -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div v-for="(set, setIdx) in exercise.sets" :key="setIdx" class="flex items-center gap-2">
                         <span class="font-mono text-xs text-primary w-6 pt-1">S{{ setIdx + 1 }}</span>
@@ -196,7 +191,18 @@
                 </div>
             </div>
 
-            <!-- ─── SUBMIT ─── -->
+            <div class="p-6 md:p-8 bg-primary/5 border-b border-primary/20">
+                <div class="flex items-start gap-3">
+                    <Target class="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <div>
+                        <p class="font-bold text-sm text-foreground-primary">Progressive Overload Tracker</p>
+                        <p class="font-mono text-xs text-foreground-text opacity-70 mt-1">
+                            Fokus pada 1-2 main compound movement. Tambah 1-2.5kg atau 1-2 reps dari minggu sebelumnya. Jangan korbankan form demi beban.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <div class="p-8 bg-background">
                 <div class="flex flex-col md:flex-row items-center justify-between gap-6">
                     <label class="flex items-center gap-3 cursor-pointer group">
@@ -217,7 +223,6 @@
             </div>
         </form>
 
-        <!-- ─── LOGGING RULES MODAL ─── -->
         <transition name="fade">
             <div v-if="showRules" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" @click.self="showRules = false">
                 <div class="w-full max-w-sm bg-white border-2 border-foreground-primary p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative animate-bounce-in">
@@ -248,7 +253,6 @@
             </div>
         </transition>
 
-        <!-- ─── PROGRAM EDITOR SIDEBAR ─── -->
         <ProgramEditorSidebar
             :open="showProgramEditor"
             mode="gym"
@@ -262,15 +266,14 @@
 
 <script setup lang="ts">
 import type { Exercise } from "~/types";
-import { Youtube, BedDouble, Check, Info, X, MessageSquare, ChevronDown, Pencil } from "lucide-vue-next";
+import { Youtube, BedDouble, Check, Info, X, MessageSquare, ChevronDown, Settings2, Lock, Target } from "lucide-vue-next";
 
-// ─── Extended UI types ───
 interface UIExercise extends Exercise {
     variants?: string[];
     selectedVariant?: string;
     note?: string;
     showNote?: boolean;
-    targetReps?: number;   // from program editor
+    targetReps?: number;
 }
 
 interface SidebarExercise {
@@ -282,13 +285,11 @@ interface SidebarExercise {
     type: 'reps' | 'hold';
 }
 
-// ─── Props / Emits ───
 const props = defineProps<{ week: number; day: string; }>();
 const emit = defineEmits(["saved"]);
 const { isAuthenticated, secureFetch } = useAuth();
 const route = useRoute();
 
-// ─── State ───
 const exercises = ref<UIExercise[]>([]);
 const completed = ref(false);
 const saving = ref(false);
@@ -299,70 +300,85 @@ const showRules = ref(false);
 const sessionNote = ref("");
 const showSessionNote = ref(false);
 
-// ─── Program editor state ───
 const showProgramEditor = ref(false);
 const sidebarExercises = ref<SidebarExercise[]>([]);
 
-// ─── Custom program from DB (overrides defaults) ───
-const customProgram = ref<Record<string, { exercises: any[] }> | null>(null);
+const customProgram = ref<Record<string, { exercises?: any[], name?: string, focus?: string, isRest?: boolean }> | null>(null);
 
-// ─── Program Defaults ───
-const programDefaults: Record<string, { name: string; focus: string; exercises: { name: string; sets: number; targetReps: number; equipment: string[] }[] }> = {
-    monday:    { name: "SENIN",  focus: "Back Width",            exercises: [
-        { name: "Weighted Pull-Up / Lat Pulldown", sets: 4, targetReps: 8,  equipment: ["Pull-Up Bar", "Lat Machine"] },
-        { name: "Lat Pulldown (Close Grip)",        sets: 3, targetReps: 10, equipment: ["Cable"] },
-        { name: "Straight Arm Pulldown",            sets: 3, targetReps: 12, equipment: ["Cable"] },
-        { name: "Rear Delt Fly",                    sets: 3, targetReps: 15, equipment: ["Dumbbell", "Machine"] },
-        { name: "Hanging Leg Raise",               sets: 3, targetReps: 12, equipment: [] },
+
+const programDefaults: Record<string, { isRest: boolean; name: string; focus: string; exercises: { name: string; sets: number; targetReps: number; equipment: string[] }[] }> = {
+    monday: { isRest: false, name: "FULL BODY A", focus: "Squat, Bench, Row", exercises: [
+        { name: "Barbell Squat", sets: 4, targetReps: 8, equipment: ["Barbell", "Smith Machine"] },
+        { name: "Barbell Bench Press", sets: 4, targetReps: 8, equipment: ["Barbell", "Dumbbell"] },
+        { name: "Barbell Row", sets: 3, targetReps: 10, equipment: ["Barbell", "Machine"] },
+        { name: "Overhead Press", sets: 3, targetReps: 10, equipment: ["Barbell", "Dumbbell"] },
+        { name: "Bicep Curl", sets: 3, targetReps: 12, equipment: ["Cable", "Dumbbell"] },
     ]},
-    tuesday:   { name: "SELASA", focus: "Push (Chest/Shoulders)", exercises: [
-        { name: "Barbell Bench Press",         sets: 4, targetReps: 8,  equipment: ["Barbell", "Smith Machine"] },
-        { name: "Overhead Press",              sets: 3, targetReps: 8,  equipment: ["Barbell", "Dumbbell"] },
-        { name: "Incline Dumbbell Press",      sets: 3, targetReps: 10, equipment: ["Dumbbell"] },
-        { name: "Lateral Raise",               sets: 4, targetReps: 15, equipment: ["Dumbbell", "Cable"] },
-        { name: "Tricep Pushdown",             sets: 3, targetReps: 12, equipment: ["Cable"] },
-        { name: "Tricep Overhead Extension",   sets: 3, targetReps: 12, equipment: ["Dumbbell", "Cable"] },
+    tuesday: { isRest: true, name: "FULL BODY B", focus: "Deadlift, OHP, Pull-down", exercises: [
+        { name: "Deadlift / RDL", sets: 4, targetReps: 8, equipment: ["Barbell", "Dumbbell"] },
+        { name: "Incline Dumbbell Press", sets: 3, targetReps: 10, equipment: ["Dumbbell", "Barbell"] },
+        { name: "Lat Pulldown", sets: 3, targetReps: 10, equipment: ["Cable", "Machine"] },
+        { name: "Lateral Raise", sets: 3, targetReps: 15, equipment: ["Dumbbell", "Cable"] },
+        { name: "Tricep Pushdown", sets: 3, targetReps: 12, equipment: ["Cable"] },
     ]},
-    wednesday: { name: "RABU",   focus: "Legs",                   exercises: [
-        { name: "Leg Press / Squat",   sets: 4, targetReps: 10, equipment: ["Machine", "Barbell"] },
-        { name: "Leg Curl",            sets: 3, targetReps: 12, equipment: ["Machine"] },
-        { name: "Leg Extension",       sets: 3, targetReps: 12, equipment: ["Machine"] },
-        { name: "Calf Raise",          sets: 4, targetReps: 15, equipment: ["Machine", "Barbell"] },
-        { name: "Hanging Leg Raise",   sets: 3, targetReps: 12, equipment: [] },
+    wednesday: { isRest: false, name: "FULL BODY C", focus: "Leg Press, Dips, Cable Row", exercises: [
+        { name: "Leg Press", sets: 4, targetReps: 10, equipment: ["Machine"] },
+        { name: "Dips / Machine Press", sets: 3, targetReps: 10, equipment: ["Machine", "Bodyweight"] },
+        { name: "Seated Cable Row", sets: 3, targetReps: 10, equipment: ["Cable", "Machine"] },
+        { name: "Leg Curl", sets: 3, targetReps: 12, equipment: ["Machine"] },
+        { name: "Face Pull", sets: 3, targetReps: 15, equipment: ["Cable"] },
     ]},
-    friday:    { name: "JUMAT",  focus: "Back Thickness",         exercises: [
-        { name: "Pull-Up",                      sets: 4, targetReps: 8,  equipment: ["Pull-Up Bar"] },
-        { name: "T-Bar Row / Barbell Row",      sets: 4, targetReps: 8,  equipment: ["Barbell", "T-Bar Machine"] },
-        { name: "Seated Cable Row (Wide)",      sets: 3, targetReps: 10, equipment: ["Cable"] },
-        { name: "Straight Arm Pulldown",        sets: 3, targetReps: 12, equipment: ["Cable"] },
-        { name: "Lateral Raise",                sets: 3, targetReps: 15, equipment: ["Dumbbell", "Cable"] },
-        { name: "Hammer Curl",                  sets: 3, targetReps: 12, equipment: ["Dumbbell", "Cable"] },
+    thursday: { isRest: true, name: "FULL BODY A", focus: "Squat, Bench, Row", exercises: [
+        { name: "Barbell Squat", sets: 4, targetReps: 8, equipment: ["Barbell", "Smith Machine"] },
+        { name: "Barbell Bench Press", sets: 4, targetReps: 8, equipment: ["Barbell", "Dumbbell"] },
+        { name: "Barbell Row", sets: 3, targetReps: 10, equipment: ["Barbell", "Machine"] },
+        { name: "Overhead Press", sets: 3, targetReps: 10, equipment: ["Barbell", "Dumbbell"] },
+        { name: "Bicep Curl", sets: 3, targetReps: 12, equipment: ["Cable", "Dumbbell"] },
     ]},
-    saturday:  { name: "SABTU",  focus: "Shoulders + Arms",       exercises: [
-        { name: "Lateral Raise",               sets: 4, targetReps: 15, equipment: ["Dumbbell", "Cable"] },
-        { name: "Face Pull",                   sets: 3, targetReps: 15, equipment: ["Cable"] },
-        { name: "Barbell Curl",                sets: 3, targetReps: 10, equipment: ["Barbell", "EZ Bar"] },
-        { name: "Skull Crushers",              sets: 3, targetReps: 10, equipment: ["EZ Bar", "Barbell"] },
-        { name: "Hanging Knee Raise",          sets: 3, targetReps: 12, equipment: [] },
+    friday: { isRest: false, name: "FULL BODY B", focus: "Deadlift, OHP, Pull-down", exercises: [
+        { name: "Deadlift / RDL", sets: 4, targetReps: 8, equipment: ["Barbell", "Dumbbell"] },
+        { name: "Incline Dumbbell Press", sets: 3, targetReps: 10, equipment: ["Dumbbell", "Barbell"] },
+        { name: "Lat Pulldown", sets: 3, targetReps: 10, equipment: ["Cable", "Machine"] },
+        { name: "Lateral Raise", sets: 3, targetReps: 15, equipment: ["Dumbbell", "Cable"] },
+        { name: "Tricep Pushdown", sets: 3, targetReps: 12, equipment: ["Cable"] },
     ]},
+    saturday: { isRest: true, name: "FULL BODY C", focus: "Leg Press, Dips, Cable Row", exercises: [
+        { name: "Leg Press", sets: 4, targetReps: 10, equipment: ["Machine"] },
+        { name: "Dips / Machine Press", sets: 3, targetReps: 10, equipment: ["Machine", "Bodyweight"] },
+        { name: "Seated Cable Row", sets: 3, targetReps: 10, equipment: ["Cable", "Machine"] },
+        { name: "Leg Curl", sets: 3, targetReps: 12, equipment: ["Machine"] },
+        { name: "Face Pull", sets: 3, targetReps: 15, equipment: ["Cable"] },
+    ]},
+    sunday: { isRest: true, name: "FULL BODY D", focus: "Accessories & Core", exercises: [
+        { name: "Bulgarian Split Squat", sets: 3, targetReps: 10, equipment: ["Dumbbell", "Bodyweight"] },
+        { name: "Push-up", sets: 3, targetReps: 15, equipment: ["Bodyweight"] },
+        { name: "Pull-up", sets: 3, targetReps: 8, equipment: ["Bodyweight", "Machine"] },
+        { name: "Hanging Leg Raise", sets: 3, targetReps: 12, equipment: ["Bodyweight"] },
+        { name: "Calf Raise", sets: 3, targetReps: 15, equipment: ["Machine", "Dumbbell"] },
+    ]}
 };
 
-// ─── Effective templates (custom overrides defaults) ───
+const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
 const effectiveTemplates = computed(() => {
-    if (!customProgram.value) return programDefaults;
-    const result = { ...programDefaults };
-    for (const [day, template] of Object.entries(programDefaults)) {
-        const custom = customProgram.value[day];
-        if (custom?.exercises?.length > 0) {
+    const result: Record<string, any> = {};
+    for (const day of ALL_DAYS) {
+        const def = programDefaults[day] || { name: "REST DAY", focus: "Recover", exercises: [], isRest: true };
+        const custom = customProgram.value?.[day];
+
+        // Penentuan Rest mutlak berdasarkan konfigurasi custom, atau default jika belum ada
+        const isRest = custom?.isRest !== undefined ? custom.isRest : def.isRest;
+
+        if (isRest) {
+            result[day] = { name: "REST DAY", focus: "Recover", exercises: [] };
+        } else if (custom) {
             result[day] = {
-                ...template,
-                exercises: custom.exercises.map((ex: any, idx: number) => ({
-                    name: ex.name || template.exercises[idx]?.name || '',
-                    sets: ex.sets ?? template.exercises[idx]?.sets ?? 3,
-                    targetReps: ex.targetReps ?? template.exercises[idx]?.targetReps ?? 10,
-                    equipment: ex.equipment ?? template.exercises[idx]?.equipment ?? [],
-                })),
+                name: custom.name || def.name,
+                focus: custom.focus || def.focus,
+                exercises: custom.exercises && custom.exercises.length > 0 ? custom.exercises : def.exercises || [],
             };
+        } else {
+            result[day] = def;
         }
     }
     return result;
@@ -371,11 +387,19 @@ const effectiveTemplates = computed(() => {
 const dayName  = computed(() => effectiveTemplates.value[props.day]?.name  || "REST DAY");
 const dayFocus = computed(() => effectiveTemplates.value[props.day]?.focus || "Recover");
 
-// ─── Open program editor ───
+function handleEditClick() {
+    if (!isAuthenticated.value) {
+        alert("PREVIEW MODE: Silakan login untuk mengkustomisasi program dan alat.");
+        navigateTo('/login');
+        return;
+    }
+    openProgramEditor();
+}
+
 function openProgramEditor() {
     const template = effectiveTemplates.value[props.day];
     if (!template) return;
-    sidebarExercises.value = template.exercises.map((ex, idx) => ({
+    sidebarExercises.value = template.exercises.map((ex: any, idx: number) => ({
         id: `ex-${props.day}-${idx}-${ex.name.slice(0, 5)}`,
         name: ex.name,
         sets: ex.sets,
@@ -386,11 +410,10 @@ function openProgramEditor() {
     showProgramEditor.value = true;
 }
 
-// ─── When program is saved from sidebar ───
 function onProgramSaved(updatedExercises: SidebarExercise[]) {
-    // Update customProgram cache for this day
     if (!customProgram.value) customProgram.value = {};
     customProgram.value[props.day] = {
+        ...customProgram.value[props.day], 
         exercises: updatedExercises.map(ex => ({
             name: ex.name,
             sets: ex.sets,
@@ -398,16 +421,12 @@ function onProgramSaved(updatedExercises: SidebarExercise[]) {
             equipment: ex.equipment,
         })),
     };
-    // Re-init exercises with new program
     initializeExercises();
     showProgramEditor.value = false;
 }
 
-// ─── Helpers ───
 function parseVariants(name: string, equipment: string[]): string[] | null {
-    // Equipment from program editor → become variants
     if (equipment && equipment.length > 0) return equipment;
-    // Legacy: "/" separator in name
     if (name.includes(" / ")) return name.split(" / ").map(v => v.trim());
     return null;
 }
@@ -420,14 +439,13 @@ function toggleNote(index: number) {
     exercises.value[index].showNote = !exercises.value[index].showNote;
 }
 
-// ─── Initialization ───
 function initializeExercises() {
     const template = effectiveTemplates.value[props.day];
     if (!template) {
         exercises.value = [];
         return;
     }
-    exercises.value = template.exercises.map((ex) => {
+    exercises.value = template.exercises.map((ex: any) => {
         const variants = parseVariants(ex.name, ex.equipment);
         return {
             name: ex.name,
@@ -441,7 +459,6 @@ function initializeExercises() {
     });
 }
 
-// ─── Load last week data ───
 async function loadLastWeekData() {
     if (props.week <= 1) { lastWeekData.value = {}; return; }
     try {
@@ -451,7 +468,7 @@ async function loadLastWeekData() {
         if (lastWeekWorkouts.length > 0) {
             const template = effectiveTemplates.value[props.day];
             const dataMap: Record<number, { sets: string[]; exerciseName: string }> = {};
-            template?.exercises.forEach((templateEx, idx) => {
+            template?.exercises.forEach((templateEx: any, idx: number) => {
                 const variants = parseVariants(templateEx.name, templateEx.equipment);
                 let exerciseRow: any = null;
                 if (variants) {
@@ -474,7 +491,6 @@ async function loadLastWeekData() {
     } catch (error) { console.error("Failed to load last week data:", error); }
 }
 
-// ─── Load current session ───
 async function loadCurrentSession() {
     try {
         if (dayName.value === "REST DAY") return;
@@ -515,7 +531,6 @@ async function loadCurrentSession() {
     } catch (error) { console.error("Failed to load current session:", error); }
 }
 
-// ─── Save ───
 async function saveWorkout() {
     if (dayName.value === "REST DAY") return;
     if (!isAuthenticated.value) { navigateTo("/login"); return; }
@@ -553,12 +568,12 @@ async function saveWorkout() {
     }
 }
 
-// ─── Lifecycle ───
 onMounted(async () => {
     try {
-        const res = await $fetch('/api/program/get?mode=gym') as { config: any; start_date: string | null };
+        const res = await secureFetch('/api/program/get?mode=gym') as { config: any; start_date: string | null };
         if (res.config) customProgram.value = res.config;
     } catch { /* fall through to defaults */ }
+    
     initializeExercises();
     if (dayName.value !== "REST DAY") {
         await Promise.all([loadLastWeekData(), loadCurrentSession()]);

@@ -6,7 +6,6 @@
                 <div class="h-8 w-48 mx-auto mb-4 bg-separator border-2 border-border animate-pulse"></div>
                 <div class="h-16 w-64 mx-auto bg-separator border-2 border-border animate-pulse"></div>
             </div>
-
             <div class="inner border-x border-separator bg-white p-8 md:p-16">
                 <div class="space-y-6">
                     <div v-for="i in 4" :key="i" class="border-2 border-separator p-6">
@@ -17,7 +16,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="fixed bottom-8 right-8 z-50 animate-bounce-in">
                 <div class="flex items-center gap-3 px-4 py-3 bg-primary border-2 border-foreground-primary shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                     <div class="flex gap-1">
@@ -25,9 +23,7 @@
                         <span class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 150ms"></span>
                         <span class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 300ms"></span>
                     </div>
-                    <span class="font-mono text-xs uppercase tracking-widest text-white font-bold">
-                        LOADING CALIST DATA
-                    </span>
+                    <span class="font-mono text-xs uppercase tracking-widest text-white font-bold">LOADING CALIST DATA</span>
                 </div>
             </div>
         </div>
@@ -52,50 +48,43 @@
                 <div class="flex justify-center mb-4">
                     <Activity class="w-12 h-12 text-primary" :stroke-width="1.5" />
                 </div>
-
-                <span class="font-handwriting text-xl text-primary mb-2 block rotate-1">
-                    Time to grind!
-                </span>
-                <h1 class="text-5xl md:text-7xl font-black uppercase text-foreground-primary mb-4">
-                    Calist Log
-                </h1>
-                <p class="font-mono text-xs text-foreground-text opacity-60 mb-8 uppercase tracking-widest">
-                    Pull-up Bar · Parallettes · Resistance Band
-                </p>
+                <span class="font-handwriting text-xl text-primary mb-2 block rotate-1">Time to grind!</span>
+                <h1 class="text-5xl md:text-7xl font-black uppercase text-foreground-primary mb-4">Calist Log</h1>
+                <p class="font-mono text-xs text-foreground-text opacity-60 mb-8 uppercase tracking-widest">Pull-up Bar · Parallettes · Resistance Band</p>
 
                 <div class="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full">
                     <Calendar class="w-4 h-4 text-primary" />
-                    <span class="font-mono text-sm text-primary font-bold">
-                        Today: {{ todayDayName }} • Week {{ calculatedWeek }}
-                    </span>
+                    <span class="font-mono text-sm text-primary font-bold">Today: {{ todayDayName }} • Week {{ calculatedWeek }}</span>
                 </div>
 
-                <div class="flex flex-wrap justify-center gap-2 max-w-2xl mx-auto">
-                    <button v-for="d in days" :key="d.value" @click="selectDay(d.value)"
+                <div class="flex flex-wrap justify-center gap-2 max-w-2xl mx-auto px-4">
+                    <button v-for="d in ALL_DAYS" :key="d.value" @click="selectDay(d.value)"
                         :class="[
-                            'px-4 py-2 rounded-lg font-bold text-sm transition-all border border-separator font-mono uppercase tracking-wider relative',
-                            selectedDay === d.value ? 'bg-primary text-white border-primary shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-0.5 -translate-y-0.5' : d.rest ? 'bg-gray-50 text-foreground-text/40 border-separator cursor-default' : isDayCompleted(d.value) ? 'bg-green-50 text-green-700 border-green-200 cursor-not-allowed opacity-60' : d.value === todayDay ? 'bg-primary/5 text-primary border-primary hover:bg-primary/10' : 'bg-white text-foreground-text hover:bg-gray-50',
+                            'px-4 py-2 rounded-lg font-bold text-sm transition-all border font-mono uppercase tracking-wider relative',
+                            selectedDay === d.value ? 'bg-primary text-white border-primary shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-0.5 -translate-y-0.5 z-10' :
+                            isDayCompleted(d.value) ? 'bg-green-50 text-green-700 border-green-200 opacity-80' :
+                            isRestDay(d.value) ? 'bg-gray-50 text-foreground-text/50 border-separator' :
+                            d.value === todayDay ? 'bg-primary/5 text-primary border-primary hover:bg-primary/10' :
+                            'bg-white text-foreground-text border-separator hover:bg-gray-50',
                         ]"
                     >
                         {{ d.label }}
                         <span v-if="isDayCompleted(d.value)" class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center text-[10px] text-white">✓</span>
-                        <span v-if="d.rest" class="absolute -top-1 -right-1 w-4 h-4 bg-separator rounded-full flex items-center justify-center text-[8px] text-white font-bold">R</span>
-                        <span v-if="d.value === todayDay && !isDayCompleted(d.value) && !d.rest" class="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                        <span v-if="isRestDay(d.value) && !isDayCompleted(d.value)" class="absolute -top-1 -right-1 w-4 h-4 bg-separator rounded-full flex items-center justify-center text-[8px] text-white font-bold shadow-sm">R</span>
+                        <span v-if="d.value === todayDay && !isDayCompleted(d.value) && !isRestDay(d.value)" class="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse"></span>
                     </button>
                 </div>
 
                 <div class="flex items-center justify-center gap-6 mt-8 select-none">
                     <button @click="currentWeek = Math.max(1, currentWeek - 1)" class="group flex items-center gap-1 text-xs font-mono uppercase hover:text-primary transition-colors disabled:opacity-30" :disabled="currentWeek === 1">
-                        <ChevronLeft class="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                        Prev
+                        <ChevronLeft class="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Prev
                     </button>
                     <div class="flex flex-col items-center">
                         <span class="font-black text-2xl leading-none">WEEK {{ currentWeek }}</span>
                         <span class="text-[10px] font-mono text-foreground-text opacity-60 tracking-widest uppercase">Calist Program</span>
                     </div>
                     <button @click="currentWeek++" class="group flex items-center gap-1 text-xs font-mono uppercase hover:text-primary transition-colors">
-                        Next
-                        <ChevronRight class="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        Next <ChevronRight class="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </button>
                 </div>
 
@@ -175,9 +164,7 @@
 <script setup lang="ts">
 import { Activity, ChevronLeft, ChevronRight, History, Calendar, CheckCircle2, Eye } from "lucide-vue-next";
 
-// ── BUG-04 FIX: start date loaded from DB via program_config table.
 const PROGRAM_START_DATE = ref<Date>(new Date());
-
 const { isAuthenticated, checkAuth, secureFetch } = useAuth();
 
 const isLoading = ref(true);
@@ -185,28 +172,40 @@ const currentWeek = ref(1);
 const selectedDay = ref("monday");
 const workoutHistory = ref<any[]>([]);
 const completedSessions = ref<Set<string>>(new Set());
+const globalConfig = ref<Record<string, any>>({});
 
-const days = [
-    { label: "Mon", value: "monday",    rest: false },
-    { label: "Tue", value: "tuesday",   rest: true  },
-    { label: "Wed", value: "wednesday", rest: false },
-    { label: "Thu", value: "thursday",  rest: true  },
-    { label: "Fri", value: "friday",    rest: false },
-    { label: "Sat", value: "saturday",  rest: false },
-    { label: "Sun", value: "sunday",    rest: false },
+const ALL_DAYS = [
+    { label: "Mon", value: "monday" }, { label: "Tue", value: "tuesday" },
+    { label: "Wed", value: "wednesday" }, { label: "Thu", value: "thursday" },
+    { label: "Fri", value: "friday" }, { label: "Sat", value: "saturday" },
+    { label: "Sun", value: "sunday" },
 ];
 
-const dayNameMap: Record<string, string> = {
-    monday: "SENIN", tuesday: "SELASA", wednesday: "RABU",
-    thursday: "KAMIS", friday: "JUMAT", saturday: "SABTU", sunday: "MINGGU",
-};
+function getDayName(dayValue: string) {
+    if (globalConfig.value[dayValue]?.name) return globalConfig.value[dayValue].name;
+    const defaults: any = { 
+        monday: "FULL BODY A", tuesday: "FULL BODY B", wednesday: "FULL BODY C", 
+        thursday: "FULL BODY A", friday: "FULL BODY B", saturday: "FULL BODY C", sunday: "FULL BODY D" 
+    };
+    return defaults[dayValue] || dayValue.toUpperCase();
+}
+
+function isRestDay(dayValue: string) {
+    const custom = globalConfig.value[dayValue];
+    if (custom && custom.isRest !== undefined) return custom.isRest;
+    // Default fallback: latihan 3x seminggu
+    return ["tuesday", "thursday", "saturday", "sunday"].includes(dayValue);
+}
+
+const workoutDays = computed(() => {
+    return ALL_DAYS.map(d => d.value).filter(d => !isRestDay(d));
+});
 
 const calculatedWeek = computed(() => {
     const now = new Date();
     const diffTime = Math.max(0, now.getTime() - PROGRAM_START_DATE.value.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const week = Math.floor(diffDays / 7) + 1;
-    return Math.max(1, week);
+    return Math.max(1, Math.floor(diffDays / 7) + 1);
 });
 
 const todayDay = computed(() => {
@@ -222,37 +221,28 @@ const todayDayName = computed(() => {
     return names[todayDay.value] || "";
 });
 
-const workoutDays = ["monday", "wednesday", "friday", "saturday", "sunday"];
-
 const weekCompletionStatus = computed(() => {
-    const completed = workoutDays.filter((day) => isDayCompleted(day)).length;
-    return `${completed}/5 sessions`;
+    const wDays = workoutDays.value;
+    const completed = wDays.filter(day => isDayCompleted(day)).length;
+    return `${completed}/${wDays.length} sessions`;
 });
 
 function isDayCompleted(day: string): boolean {
-    const dayName = dayNameMap[day];
-    if (!dayName) return false;
+    if (isRestDay(day)) return false; 
+    const dayName = getDayName(day);
     const key = `${currentWeek.value}-${dayName}`;
     return completedSessions.value.has(key);
 }
 
 function selectDay(day: string) {
-    const d = days.find(x => x.value === day);
-    if (d?.rest) return;
     selectedDay.value = day;
 }
 
 async function loadHistory() {
     try {
         const { data } = await secureFetch("/api/calist/get");
+        const sortedData = (data as any[]).sort((a, b) => parseInt(b[0] || 0) - parseInt(a[0] || 0));
 
-        const sortedData = (data as any[]).sort((a, b) => {
-            const weekA = parseInt(a[0]) || 0;
-            const weekB = parseInt(b[0]) || 0;
-            return weekB - weekA;
-        });
-
-        // BUG-03 FIX: Deduplicate by (week, day) — one row per session, not per exercise
         const uniqueSessions = new Map<string, any[]>();
         const sessions = new Set<string>();
 
@@ -262,57 +252,60 @@ async function loadHistory() {
             const isCompleted = row[9] === "YES";
             const key = `${week}-${day}`;
 
-            if (!uniqueSessions.has(key)) {
-                uniqueSessions.set(key, row);
-            }
-            if (week && day && isCompleted) {
-                sessions.add(key);
-            }
+            if (!uniqueSessions.has(key)) uniqueSessions.set(key, row);
+            if (week && day && isCompleted) sessions.add(key);
         });
 
         workoutHistory.value = Array.from(uniqueSessions.values());
         completedSessions.value = sessions;
     } catch (error) {
-        console.error("Failed to load calist history:", error);
+        console.error("Failed to load history:", error);
     }
 }
 
-function initializeDay() {
+function initializeProgram() {
     currentWeek.value = calculatedWeek.value;
-    if (workoutDays.includes(todayDay.value) && !isDayCompleted(todayDay.value)) {
+    const wDays = workoutDays.value;
+    if (wDays.includes(todayDay.value) && !isDayCompleted(todayDay.value)) {
+        selectedDay.value = todayDay.value;
+    } else {
+        selectFirstIncompleteDay();
+    }
+}
+
+function selectFirstIncompleteDay() {
+    const wDays = workoutDays.value;
+    if (wDays.includes(todayDay.value) && !isDayCompleted(todayDay.value)) {
         selectedDay.value = todayDay.value;
         return;
     }
-    for (const day of workoutDays) {
+    for (const day of wDays) {
         if (!isDayCompleted(day)) {
             selectedDay.value = day;
             return;
         }
     }
-    selectedDay.value = workoutDays.includes(todayDay.value) ? todayDay.value : "monday";
+    selectedDay.value = wDays.includes(todayDay.value) ? todayDay.value : "monday";
 }
 
 function handleSaved() {
     loadHistory();
 }
 
-watch(currentWeek, () => { initializeDay(); });
+watch(currentWeek, () => { initializeProgram(); });
 
 onMounted(async () => {
     isLoading.value = true;
-    
-    // WAJIB DITUNGGU: Mencegah komponen render dengan state guest padahal cookie valid
     await checkAuth();
 
     try {
         if (isAuthenticated.value) {
             const configRes = await secureFetch("/api/program/get?mode=calist").catch(() => ({})) as any;
-            if (configRes?.start_date) {
-                PROGRAM_START_DATE.value = new Date(configRes.start_date);
-            }
+            if (configRes?.start_date) PROGRAM_START_DATE.value = new Date(configRes.start_date);
+            if (configRes?.config) globalConfig.value = configRes.config;
             await loadHistory();
         }
-        initializeDay();
+        initializeProgram();
     } catch (error) {
         console.error("Error loading calist data:", error);
     } finally {
@@ -322,15 +315,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-@keyframes bounceIn {
-    0% { transform: scale(0.9); opacity: 0; }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); opacity: 1; }
-}
+@keyframes bounceIn { 0% { transform: scale(0.9); opacity: 0; } 50% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
 .animate-bounce-in { animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 </style>
