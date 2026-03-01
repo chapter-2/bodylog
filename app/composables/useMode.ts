@@ -19,7 +19,7 @@ export const useMode = () => {
     const isCardio = computed(() => mode.value === 'cardio');
     const isCustom = computed(() => mode.value === 'custom');
     
-    const hasMode = computed(() => mode.value !== "" && (mode.value === 'custom' || (intensity.value !== "" && frequency.value > 0)));
+    const hasMode = computed(() => mode.value === 'gym' || mode.value === 'calist');
 
     const setMode = (newMode: string, newIntensity: string = "", newFreq: number = 0) => {
         modeCookie.value = newMode;

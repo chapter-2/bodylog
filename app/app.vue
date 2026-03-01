@@ -176,15 +176,18 @@
 <script setup lang="ts">
 import { Menu, X, LogOut, Dumbbell, Activity, ChevronDown, User } from "lucide-vue-next";
 
-// PERBAIKAN: Ambil route untuk mengecek apakah user sedang di halaman login
 const route = useRoute(); 
 const { isAuthenticated, logout, checkAuth, user } = useAuth();
-const { isGym, isCalist, hasMode, setMode, mode, intensity, frequency } = useMode();
+// PERBAIKAN: Hapus parameter intensity & frequency karena sudah tidak dipakai (digantikan oleh Global Schedule)
+const { isGym, isCalist, hasMode, setMode, mode } = useMode();
 
 const isMenuOpen = useState('isMenuOpen', () => false);
 const showLogoutModal = ref(false);
 const showModeModal = ref(false);
 const isUserMenuOpen = ref(false);
+
+// State untuk mencegah Modal muncul sebelum proses pengecekan Auth selesai
+const isAuthChecked = ref(false);
 
 function handleLogoutClick() {
     isUserMenuOpen.value = false;
@@ -198,31 +201,32 @@ function confirmLogout() {
     navigateTo("/");
 }
 
+// PERBAIKAN: Fungsi selectMode sekarang MURNI hanya mengirimkan string mode (gym/calist).
+// Ini akan memotong jalur pemanggilan "Wizard Setup" lama.
 function selectMode(newMode: 'gym' | 'calist') {
-    setMode(newMode, intensity.value || 'intermediate', frequency.value || 5);
+    setMode(newMode);
     showModeModal.value = false;
     if (newMode === 'gym') navigateTo('/gym');
     else navigateTo('/calist');
 }
 
-// ENGINE PINTAR UNTUK MODAL MODE
-// ENGINE PINTAR UNTUK MODAL MODE
 watchEffect(() => {
-    // Modal Pilih Mode HANYA BOLEH MUNCUL jika 3 syarat absolut ini terpenuhi:
-    // 1. User belum punya mode
-    // 2. User SUDAH TERBUKTI LOGIN (isAuthenticated)
-    // 3. User TIDAK sedang berada di halaman /login
-    if (!hasMode.value && isAuthenticated.value && route.path !== '/login') {
+    // Modal Mode HANYA BOLEH MUNCUL jika 4 syarat absolut ini terpenuhi:
+    // 1. Pengecekan auth selesai (isAuthChecked === true)
+    // 2. User belum punya mode (hasMode === false)
+    // 3. User SUDAH TERBUKTI LOGIN (isAuthenticated === true)
+    // 4. User TIDAK sedang berada di halaman /login
+    if (isAuthChecked.value && !hasMode.value && isAuthenticated.value && route.path !== '/login') {
         showModeModal.value = true;
     } else {
         showModeModal.value = false;
     }
 });
 
-onMounted(() => {
-    checkAuth();
-    // Kita hapus eksekusi kasar "showModeModal = true" dari sini, 
-    // karena sudah ditangani secara elegan oleh watchEffect di atas.
+onMounted(async () => {
+    // Tunggu pengecekan auth selesai secara sempurna
+    await checkAuth();
+    isAuthChecked.value = true;
 });
 </script>
 
