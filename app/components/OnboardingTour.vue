@@ -2,10 +2,10 @@
     <transition name="fade">
         <div v-if="isActive" class="fixed inset-0 z-[200] pointer-events-none overflow-hidden">
             
-            <div class="fixed inset-0 z-[180] pointer-events-auto" @click="step === 5 ? finishTour() : nextStep()"></div>
+            <div class="fixed inset-0 z-[180] pointer-events-auto" @click="step === 7 ? finishTour() : nextStep()"></div>
             
             <div v-if="targetRect"
-                 class="fixed z-[190] pointer-events-none transition-all duration-200 shadow-[0_0_0_9999px_rgba(0,0,0,0.85)]"
+                 class="fixed z-[190] pointer-events-none transition-all duration-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.85)]"
                  :style="{
                      top: step === 5 && windowWidth < 768 ? targetRect.top + 'px' : (targetRect.top - 8) + 'px',
                      left: step === 5 ? targetRect.left + 'px' : (targetRect.left - 8) + 'px',
@@ -15,22 +15,22 @@
                  }"
             ></div>
 
-            <div v-if="step <= 4 && targetRect" 
+            <div v-if="(step <= 4 || step >= 6) && targetRect" 
                  class="fixed z-[200] flex flex-col animate-bounce-in w-[calc(100%-32px)] max-w-[320px] pointer-events-none"
                  :style="getUnifiedTooltipStyle()">
                  
-                 <svg class="w-12 h-12 mb-2 text-white drop-shadow-[3px_3px_0px_rgba(0,0,0,1)]"
+                 <svg v-if="step <= 4" class="w-12 h-12 mb-2 text-white drop-shadow-[3px_3px_0px_rgba(0,0,0,1)]"
                       :style="getArrowStyle()"
                       viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                      <path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>
                  </svg>
                  
                  <div class="bg-white border-2 border-foreground-primary p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] pointer-events-auto text-left w-full relative z-10">
-                     <div class="font-mono text-xs text-primary font-bold mb-1">Step {{ step }}/5</div>
+                     <div class="font-mono text-xs text-primary font-bold mb-1">Step {{ step }}/7</div>
                      <h3 class="font-black uppercase text-xl mb-2">{{ currentContent.title }}</h3>
                      <p class="font-mono text-xs text-foreground-text mb-6 leading-relaxed" v-html="currentContent.desc"></p>
                      <button @click.stop="nextStep" class="w-full py-3 bg-foreground-primary text-white font-bold text-xs uppercase tracking-wider hover:bg-primary transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]">
-                         {{ step === 4 ? 'Buka Editor →' : 'Next →' }}
+                         {{ step === 7 ? 'Selesai & Eksekusi' : (step === 4 ? 'Buka Editor →' : 'Next →') }}
                      </button>
                  </div>
             </div>
@@ -40,14 +40,14 @@
                  :style="getStep5Style()">
                  
                  <div class="bg-white border-2 border-foreground-primary p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full pointer-events-auto text-left relative z-10">
-                     <div class="font-mono text-xs text-primary font-bold mb-1">Step 5/5</div>
+                     <div class="font-mono text-xs text-primary font-bold mb-1">Step 5/7</div>
                      <h3 class="font-black uppercase text-xl mb-2">Drag & Drop</h3>
                      <p class="font-mono text-xs text-foreground-text mb-6 leading-relaxed">
                          Ini Sidebar Editor. <span class="inline md:hidden">Di HP muncul dari bawah.</span><span class="hidden md:inline">Di PC muncul dari kanan.</span><br><br>
                          Ganti urutan, set target repetisi, dan catat alat alternatif (substitusi) di sini. Semua perubahan akan langsung tersimpan.
                      </p>
-                     <button @click.stop="finishTour" class="w-full py-3 bg-primary text-white font-bold text-xs uppercase tracking-wider hover:bg-foreground-primary transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] active:scale-[0.98]">
-                         Selesai & Eksekusi
+                     <button @click.stop="nextStep" class="w-full py-3 bg-primary text-white font-bold text-xs uppercase tracking-wider hover:bg-foreground-primary transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] active:scale-[0.98]">
+                         Lanjut ke Settings →
                      </button>
                  </div>
 
@@ -72,7 +72,10 @@ const contents = [
     { title: '01. Eksekusi Harian', desc: 'Ini medan tempurmu. Buka tiap hari latihan untuk mencatat progres beban dan repetisi.' },
     { title: '02. Weigh-In', desc: 'Set targetmu (Bulk/Cut/Maintain) dan pantau deviasi berat badan mingguanmu secara presisi di sini.' },
     { title: '03. AI Coach', desc: 'Ekspor datamu ke CSV. Biarkan AI menganalisis letak plateau atau kesalahan rasio volume latihanmu.' },
-    { title: 'Program Editor', desc: 'Perhatikan tombol yang disorot ini. Klik untuk mengkustomisasi program (<i>drag-and-drop</i> urutan, ubah alat, set reps).' }
+    { title: 'Program Editor', desc: 'Perhatikan tombol yang disorot ini. Klik untuk mengkustomisasi program (<i>drag-and-drop</i> urutan, ubah alat, set reps).' },
+    { title: 'Drag & Drop', desc: 'Placeholder' }, // Di-handle custom di UI Step 5
+    { title: '04. Program Dates', desc: '<span class="text-primary font-bold">PENTING:</span> Atur tanggal mulai programmu di sini. Sistem akan menghitung Week 1, Week 2, dst secara otomatis berdasarkan tanggal ini.' },
+    { title: '05. Weekly Schedule', desc: '<span class="text-primary font-bold">PENTING:</span> Atur hari apa saja kamu latihan (ON) dan libur (OFF). Data tidak akan hilang meskipun harinya dimatikan.' }
 ];
 const currentContent = computed(() => contents[step.value - 1] || contents[0]);
 
@@ -88,6 +91,8 @@ const targetId = computed(() => {
     if (step.value === 3) return isMob ? 'mob-coach' : 'nav-coach';
     if (step.value === 4) return 'tour-edit-btn';
     if (step.value === 5) return 'program-editor-sidebar';
+    if (step.value === 6) return 'tour-start-dates';
+    if (step.value === 7) return 'tour-weekly-schedule';
     return null;
 });
 
@@ -106,8 +111,21 @@ const updatePosition = () => {
 function getUnifiedTooltipStyle() {
     if (!targetRect.value) return {};
     const isMob = windowWidth.value < 768;
-    let top = targetRect.value.bottom + (step.value === 4 ? 16 : 8);
     
+    // Untuk Langkah 6 & 7 (Kartu Profile Raksasa), letakkan Tooltip menumpang di dalam sorotan kartu
+    if (step.value >= 6) {
+        let top = targetRect.value.top + 40; 
+        if (top < 80) top = 80; // Cegah tertutup navbar
+        
+        let left = '16px';
+        if (!isMob) {
+            left = (targetRect.value.left + Math.max(16, targetRect.value.width / 2 - 160)) + 'px';
+        }
+        return { top: top + 'px', left, right: 'auto' };
+    }
+
+    // Untuk Langkah 1-4
+    let top = targetRect.value.bottom + (step.value === 4 ? 16 : 8);
     if (isMob) {
         return { top: top + 'px', left: '16px' }; 
     } else {
@@ -167,7 +185,6 @@ watch(step, async (newVal) => {
     if (typeof window === 'undefined') return;
     const isMob = window.innerWidth < 768;
 
-    // Paksa Menu HP terbuka jika masih di tahap eksplorasi navigasi
     if (newVal <= 3 && isMob) {
         isMenuOpen.value = true;
     } else {
@@ -178,7 +195,6 @@ watch(step, async (newVal) => {
     setTimeout(() => {
         if (targetId.value) {
             const el = document.getElementById(targetId.value);
-            // Menarik elemen agar berada di tengah pandangan secara smooth
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else if (newVal <= 3 && !isMob) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -191,14 +207,11 @@ watch(step, async (newVal) => {
     positionInterval = setInterval(() => {
         updatePosition();
         attempts++;
-        // Berhenti scan konstan setelah 3 detik untuk menghemat memori, 
-        // kecuali jika user melakukan resize/scroll.
         if (attempts > 60 && positionInterval && step.value < 4) {
             clearInterval(positionInterval);
         }
     }, 50);
 
-    // True flag: Menangkap event scroll dari elemen dalam (seperti menu HP yang bisa di-scroll)
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true); 
 }, { immediate: true });
@@ -220,7 +233,11 @@ async function nextStep() {
         step.value = 5;
         const targetPath = mode.value === 'gym' ? '/gym' : '/calist';
         await navigateTo(`${targetPath}?tour=step5`);
-    } else if (step.value < 5) {
+    } else if (step.value === 5) {
+        step.value = 6;
+        // Pindah ke Profile. Karena ini unmount halaman Log, Sidebar akan otomatis menutup.
+        await navigateTo('/profile?tour=step6');
+    } else if (step.value < 7) {
         step.value++;
     } else {
         finishTour();
@@ -229,7 +246,7 @@ async function nextStep() {
 
 async function finishTour() {
     completeTour();
-    await navigateTo('/'); 
+    // await navigateTo('/'); 
 }
 </script>
 

@@ -63,7 +63,7 @@
                     </div>
 
                     <div class="grid grid-cols-1 gap-8">
-                        <div class="bg-white border-2 border-separator p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+                        <div id="tour-start-dates" class="bg-white border-2 border-separator p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
                             <h3 class="font-black uppercase text-lg mb-2">Program Start Dates</h3>
                             <p class="font-mono text-xs text-foreground-text mb-6 leading-relaxed max-w-2xl">
                                 Week number dihitung otomatis dari tanggal ini. <span class="text-primary font-bold">Jangan diubah jika program latihanmu sudah berjalan.</span>
@@ -89,7 +89,7 @@
                             </div>
                         </div>
 
-                        <div class="bg-white border-2 border-separator p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+                        <div id="tour-weekly-schedule" class="bg-white border-2 border-separator p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
                             <h3 class="font-black uppercase text-lg mb-2">Weekly Schedule Manager</h3>
                             <p class="font-mono text-sm text-foreground-text mb-6 leading-relaxed">
                                 Atur hari latihan dan hari libur secara global. Ubah nama hari dan fokus otot di sini. Data latihan di Program Editor tidak akan hilang meskipun hari tersebut dimatikan.
@@ -200,15 +200,13 @@ onMounted(async () => {
     await loadSettings();
 });
 
-// ─── Security: Change Password ───
 const passForm = ref({ old: '', new: '' });
 const isChangingPass = ref(false);
 const passMsg = ref('');
 const passStatus = ref<'error' | 'success'>('success');
 
 async function changePassword() {
-    isChangingPass.value = true;
-    passMsg.value = '';
+    isChangingPass.value = true; passMsg.value = '';
     try {
         await secureFetch('/api/auth/password', { method: 'POST', body: { oldPassword: passForm.value.old, newPassword: passForm.value.new } });
         passStatus.value = 'success'; passMsg.value = '✓ Password updated successfully.'; passForm.value = { old: '', new: '' };
@@ -217,7 +215,6 @@ async function changePassword() {
     } finally { isChangingPass.value = false; }
 }
 
-// ─── Data: Backup ───
 const isDownloading = ref(false);
 async function downloadBackup() {
     isDownloading.value = true;
@@ -231,7 +228,6 @@ async function downloadBackup() {
     } catch { alert("Failed to download backup."); } finally { isDownloading.value = false; }
 }
 
-// ─── Start Dates ───
 const gymStartDate = ref(''); const calistStartDate = ref('');
 const isSavingDates = ref(false); const dateMsg = ref(''); const dateStatus = ref<'error' | 'success'>('success');
 
@@ -248,7 +244,6 @@ async function saveStartDates() {
     } finally { isSavingDates.value = false; }
 }
 
-// ─── WEEKLY SCHEDULE MANAGER ───
 const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const scheduleMode = ref<'gym' | 'calist'>('gym');
 
@@ -275,10 +270,7 @@ const defaultSchedule = {
 
 const schedule = ref(JSON.parse(JSON.stringify(defaultSchedule)));
 const rawConfig = ref({ gym: {} as Record<string, any>, calist: {} as Record<string, any> });
-
-const isSavingSchedule = ref(false);
-const schedMsg = ref('');
-const schedStatus = ref<'error' | 'success'>('success');
+const isSavingSchedule = ref(false); const schedMsg = ref(''); const schedStatus = ref<'error' | 'success'>('success');
 
 async function loadSettings() {
     try {
@@ -313,12 +305,10 @@ async function loadSettings() {
 }
 
 async function saveSchedule() {
-    isSavingSchedule.value = true;
-    schedMsg.value = '';
+    isSavingSchedule.value = true; schedMsg.value = '';
     try {
         const mode = scheduleMode.value;
         const configToSave = { ...rawConfig.value[mode] }; 
-
         ALL_DAYS.forEach(day => {
             configToSave[day] = {
                 ...(configToSave[day] || {}), 
@@ -327,20 +317,12 @@ async function saveSchedule() {
                 isRest: schedule.value[mode][day].isRest
             };
         });
-
-        await secureFetch('/api/program/save', {
-            method: 'POST',
-            body: { mode, config: configToSave }
-        });
-
+        await secureFetch('/api/program/save', { method: 'POST', body: { mode, config: configToSave } });
         rawConfig.value[mode] = configToSave;
         schedStatus.value = 'success';
         schedMsg.value = `✓ Global Schedule for ${mode.toUpperCase()} saved.`;
     } catch (e: any) {
-        schedStatus.value = 'error';
-        schedMsg.value = e.data?.message || 'Failed to save schedule.';
-    } finally {
-        isSavingSchedule.value = false;
-    }
+        schedStatus.value = 'error'; schedMsg.value = e.data?.message || 'Failed to save schedule.';
+    } finally { isSavingSchedule.value = false; }
 }
 </script>
