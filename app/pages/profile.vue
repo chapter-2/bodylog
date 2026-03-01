@@ -1,6 +1,6 @@
 <template>
     <div class="min-h-screen bg-background pb-20">
-        <div class="inner py-10 md:py-16">
+        <div class="inner py-10 md:py-16 px-4 md:px-8">
 
             <div class="mb-12 border-b-2 border-foreground-primary pb-6 text-center md:text-left">
                 <span class="font-handwriting text-xl text-primary mb-1 block">Instance Management</span>
@@ -13,8 +13,8 @@
 
                 <section>
                     <div class="flex items-center gap-3 mb-6 border-b-2 border-separator pb-2">
-                        <UserIcon class="w-6 h-6 text-primary" />
-                        <h2 class="text-2xl font-black uppercase tracking-widest text-foreground-primary">Account & Security</h2>
+                        <UserIcon class="w-6 h-6 text-primary shrink-0" />
+                        <h2 class="text-xl md:text-2xl font-black uppercase tracking-widest text-foreground-primary leading-tight">Account & Security</h2>
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
@@ -22,7 +22,7 @@
                             <div class="w-20 h-20 bg-primary flex items-center justify-center rounded-xl shadow-[4px_4px_0px_0px_#27272a] mb-5">
                                 <UserIcon class="w-10 h-10 text-white" />
                             </div>
-                            <h3 class="text-3xl font-black uppercase tracking-tight text-foreground-primary">
+                            <h3 class="text-3xl font-black uppercase tracking-tight text-foreground-primary truncate w-full">
                                 {{ user?.username || 'Loading...' }}
                             </h3>
                             <p v-if="user?.created_at" class="font-mono text-xs text-foreground-text mt-4 uppercase tracking-widest border-t border-separator pt-4 w-full">
@@ -58,8 +58,8 @@
 
                 <section>
                     <div class="flex items-center gap-3 mb-6 border-b-2 border-separator pb-2">
-                        <CalendarDays class="w-6 h-6 text-primary" />
-                        <h2 class="text-2xl font-black uppercase tracking-widest text-foreground-primary">Protocol Configuration</h2>
+                        <CalendarDays class="w-6 h-6 text-primary shrink-0" />
+                        <h2 class="text-xl md:text-2xl font-black uppercase tracking-widest text-foreground-primary leading-tight">Protocol Configuration</h2>
                     </div>
 
                     <div class="grid grid-cols-1 gap-8">
@@ -71,11 +71,15 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <label class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2">🏋️ Gym Program Start</label>
+                                    <label class="font-mono text-xs uppercase tracking-widest text-foreground-text mb-2 flex items-center gap-2">
+                                        <Dumbbell class="w-4 h-4 text-primary" /> Gym Program Start
+                                    </label>
                                     <input v-model="gymStartDate" type="date" class="w-full bg-transparent border-b-2 border-separator py-2 font-mono text-lg text-foreground-primary outline-none focus:border-primary transition-colors" />
                                 </div>
                                 <div>
-                                    <label class="block font-mono text-xs uppercase tracking-widest text-foreground-text mb-2">🤸 Calist Program Start</label>
+                                    <label class="font-mono text-xs uppercase tracking-widest text-foreground-text mb-2 flex items-center gap-2">
+                                        <Activity class="w-4 h-4 text-primary" /> Calist Program Start
+                                    </label>
                                     <input v-model="calistStartDate" type="date" class="w-full bg-transparent border-b-2 border-separator py-2 font-mono text-lg text-foreground-primary outline-none focus:border-primary transition-colors" />
                                 </div>
                             </div>
@@ -96,8 +100,12 @@
                             </p>
 
                             <div class="flex gap-2 mb-6 border-b-2 border-separator pb-4">
-                                <button @click="scheduleMode = 'gym'" :class="scheduleMode === 'gym' ? 'bg-primary text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5 border-primary' : 'bg-[#fcfbf7] text-foreground-primary border-separator hover:bg-gray-100'" class="px-6 py-2 border-2 font-bold uppercase text-sm transition-all tracking-widest">🏋️ Gym</button>
-                                <button @click="scheduleMode = 'calist'" :class="scheduleMode === 'calist' ? 'bg-primary text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5 border-primary' : 'bg-[#fcfbf7] text-foreground-primary border-separator hover:bg-gray-100'" class="px-6 py-2 border-2 font-bold uppercase text-sm transition-all tracking-widest">🤸 Calist</button>
+                                <button @click="scheduleMode = 'gym'" :class="scheduleMode === 'gym' ? 'bg-primary text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5 border-primary' : 'bg-[#fcfbf7] text-foreground-primary border-separator hover:bg-gray-100'" class="px-6 py-2 border-2 font-bold uppercase text-sm transition-all tracking-widest flex items-center gap-2">
+                                    <Dumbbell class="w-4 h-4" /> GYM
+                                </button>
+                                <button @click="scheduleMode = 'calist'" :class="scheduleMode === 'calist' ? 'bg-primary text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5 border-primary' : 'bg-[#fcfbf7] text-foreground-primary border-separator hover:bg-gray-100'" class="px-6 py-2 border-2 font-bold uppercase text-sm transition-all tracking-widest flex items-center gap-2">
+                                    <Activity class="w-4 h-4" /> CALIST
+                                </button>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -105,10 +113,10 @@
                                      class="border-2 p-5 transition-all relative overflow-hidden"
                                      :class="schedule[scheduleMode][day].isRest ? 'border-separator bg-gray-100 opacity-70' : 'border-foreground-primary bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]'">
                                     
-                                    <div class="flex justify-between items-center mb-5">
-                                        <h4 class="font-black uppercase tracking-widest" :class="schedule[scheduleMode][day].isRest ? 'text-separator' : 'text-primary'">{{ day }}</h4>
+                                    <div class="flex justify-between items-center gap-3 mb-5">
+                                        <h4 class="font-black uppercase tracking-widest truncate flex-1" :class="schedule[scheduleMode][day].isRest ? 'text-separator' : 'text-primary'">{{ day }}</h4>
                                         
-                                        <label class="relative inline-flex items-center cursor-pointer">
+                                        <label class="relative inline-flex items-center cursor-pointer shrink-0">
                                             <input type="checkbox" v-model="schedule[scheduleMode][day].isRest" class="sr-only peer" :true-value="false" :false-value="true">
                                             <div class="w-12 h-6 bg-gray-300 border-2 border-gray-400 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-checked:border-primary shadow-inner"></div>
                                         </label>
@@ -126,16 +134,17 @@
                                     </div>
                                     <div v-else class="py-6 text-center">
                                         <span class="font-mono text-xs font-bold text-foreground-text uppercase tracking-widest opacity-60 flex items-center justify-center gap-2">
-                                            <span>💤 REST DAY</span>
+                                            <BedDouble class="w-4 h-4" /> REST DAY
                                         </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <button @click="saveSchedule" :disabled="isSavingSchedule" class="mt-8 w-full py-4 bg-primary text-white font-black text-sm uppercase tracking-wider hover:bg-foreground-primary transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 active:translate-y-1">
-                                <Save class="w-5 h-5" />
-                                {{ isSavingSchedule ? 'Saving Configuration...' : 'Save Global Schedule' }}
-                            </button>
+                            <button @click="saveSchedule" :disabled="isSavingSchedule" class="mt-8 w-full py-4 bg-primary text-white font-black text-sm md:text-base uppercase tracking-wider hover:bg-foreground-primary transition-colors flex items-center justify-center gap-3 disabled:opacity-50 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 active:translate-y-1">
+    <Save class="hidden md:block w-5 h-5 shrink-0" />
+    <span>{{ isSavingSchedule ? 'Saving Configuration...' : 'Save Global Schedule' }}</span>
+</button>
+
                             <div v-if="schedMsg" :class="schedStatus === 'error' ? 'text-red-500 bg-red-50 border-red-100' : 'text-green-700 bg-green-50 border-green-100'" class="mt-4 text-sm font-bold border p-3 rounded text-center">
                                 {{ schedMsg }}
                             </div>
@@ -145,12 +154,11 @@
 
                 <section>
                     <div class="flex items-center gap-3 mb-6 border-b-2 border-separator pb-2">
-                        <DatabaseBackup class="w-6 h-6 text-primary" />
-                        <h2 class="text-2xl font-black uppercase tracking-widest text-foreground-primary">System & Data</h2>
+                        <DatabaseBackup class="w-6 h-6 text-primary shrink-0" />
+                        <h2 class="text-xl md:text-2xl font-black uppercase tracking-widest text-foreground-primary leading-tight">System & Data</h2>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        
                         <div class="bg-[#fcfbf7] border-2 border-separator p-8 flex flex-col justify-between hover:border-primary transition-colors group">
                             <div>
                                 <h3 class="font-black uppercase text-lg mb-2">Data Export</h3>
@@ -160,12 +168,12 @@
                             </div>
                             <div class="flex flex-col gap-3">
                                 <button @click="downloadBackup('workouts')" :disabled="isDownloading" class="w-full py-3 bg-white border-2 border-foreground-primary text-foreground-primary font-bold text-xs uppercase tracking-wider hover:bg-foreground-primary hover:text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 group-hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                                    <Download class="w-4 h-4" />
-                                    {{ isDownloading ? 'Exporting...' : 'Export Workouts (CSV)' }}
+                                    <Download class="w-4 h-4 shrink-0" />
+                                    <span>{{ isDownloading ? 'Exporting...' : 'Export Workouts (CSV)' }}</span>
                                 </button>
                                 <button @click="downloadBackup('weight')" :disabled="isDownloading" class="w-full py-3 bg-white border-2 border-foreground-primary text-foreground-primary font-bold text-xs uppercase tracking-wider hover:bg-foreground-primary hover:text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 group-hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                                    <Download class="w-4 h-4" />
-                                    {{ isDownloading ? 'Exporting...' : 'Export Weight Log (CSV)' }}
+                                    <Download class="w-4 h-4 shrink-0" />
+                                    <span>{{ isDownloading ? 'Exporting...' : 'Export Weight Log (CSV)' }}</span>
                                 </button>
                             </div>
                         </div>
@@ -178,8 +186,8 @@
                                 </p>
                             </div>
                             <button @click="handleResetTour" class="w-full py-3 bg-white border-2 border-foreground-primary text-foreground-primary font-bold text-sm uppercase tracking-wider hover:bg-foreground-primary hover:text-white transition-colors flex items-center justify-center gap-2 group-hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                                <RefreshCw class="w-4 h-4" />
-                                Replay Tour
+                                <RefreshCw class="w-4 h-4 shrink-0" />
+                                <span>Replay Tour</span>
                             </button>
                         </div>
                     </div>
@@ -191,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { User as UserIcon, Download, Lock, DatabaseBackup, CalendarDays, Save, RefreshCw } from "lucide-vue-next";
+import { User as UserIcon, Download, Lock, DatabaseBackup, CalendarDays, Save, RefreshCw, Dumbbell, Activity, BedDouble } from "lucide-vue-next";
 
 const { secureFetch, isAuthenticated, checkAuth, user } = useAuth();
 const { resetTour } = useMode();
@@ -222,7 +230,6 @@ async function changePassword() {
     } finally { isChangingPass.value = false; }
 }
 
-// ─── PERBAIKAN: CSV PARSER 2.0 (DIPISAH BERDASARKAN JENIS) ───
 const isDownloading = ref(false);
 async function downloadBackup(type: 'workouts' | 'weight') {
     isDownloading.value = true;
@@ -231,7 +238,6 @@ async function downloadBackup(type: 'workouts' | 'weight') {
         
         let csv = "";
         
-        // Helper untuk mencegah error CSV jika ada tanda koma/kutip di dalam text notes
         const escape = (val: any) => {
              if (val === null || val === undefined) return "";
              const str = String(val);
@@ -244,7 +250,6 @@ async function downloadBackup(type: 'workouts' | 'weight') {
         let filename = "";
 
         if (type === 'workouts') {
-            // Header khusus Latihan
             csv = "MODE,WEEK,DAY,DATE,TIME,EXERCISE_NAME,SET1,SET2,SET3,SET4,COMPLETED,EXERCISE_NOTES,SESSION_NOTES\n";
             
             (res.gym_sessions || []).forEach((row: any) => {
@@ -257,7 +262,6 @@ async function downloadBackup(type: 'workouts' | 'weight') {
             
             filename = `bodylog_workouts_${new Date().toISOString().split('T')[0]}.csv`;
         } else {
-            // Header khusus Berat Badan
             csv = "WEEK,DATE,WEIGHT_KG,NOTES\n";
             
             (res.weight_entries || []).forEach((row: any) => {

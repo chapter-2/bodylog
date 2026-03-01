@@ -13,9 +13,7 @@
             v-if="open"
             :class="[
                 'fixed z-[100] bg-white flex flex-col overflow-hidden',
-                // Mobile: bottom sheet
                 'bottom-0 left-0 right-0 max-h-[92vh] rounded-t-2xl border-t-2 border-foreground-primary',
-                // Desktop: right side drawer
                 'md:bottom-0 md:top-0 md:left-auto md:right-0 md:w-[380px] md:max-h-full md:rounded-none md:border-t-0 md:border-l-2',
                 'shadow-[-8px_0px_0px_0px_rgba(0,0,0,0.08)] md:shadow-[-8px_0px_40px_rgba(0,0,0,0.15)]',
             ]"
@@ -26,8 +24,10 @@
 
             <div class="px-6 py-4 border-b-2 border-foreground-primary flex items-center justify-between shrink-0 bg-[#fcfbf7]">
                 <div>
-                    <p class="font-mono text-[10px] uppercase tracking-widest text-primary">
-                        {{ mode === 'gym' ? '🏋️ Gym' : '🤸 Calist' }} · {{ dayDisplayName }}
+                    <p class="font-mono text-[10px] uppercase tracking-widest text-primary flex items-center gap-1.5 mb-1">
+                        <Dumbbell v-if="mode === 'gym'" class="w-3 h-3" />
+                        <Activity v-else class="w-3 h-3" />
+                        {{ mode === 'gym' ? 'GYM' : 'CALIST' }} · {{ dayDisplayName }}
                     </p>
                     <h2 class="text-xl font-black uppercase text-foreground-primary leading-tight">Edit Program</h2>
                 </div>
@@ -119,14 +119,16 @@
                                             v-if="mode === 'calist'"
                                             @click.stop="ex.type = ex.type === 'hold' ? 'reps' : 'hold'"
                                             :class="[
-                                                'font-mono text-[10px] font-bold px-2 py-0.5 rounded border transition-colors',
+                                                'font-mono text-[10px] font-bold px-2 py-0.5 rounded border transition-colors flex items-center gap-1',
                                                 ex.type === 'hold'
                                                     ? 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
                                                     : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
                                             ]"
                                             title="Click to toggle between HOLD and REPS"
                                         >
-                                            {{ ex.type === 'hold' ? '⏱ HOLD' : '🔄 REPS' }}
+                                            <Timer v-if="ex.type === 'hold'" class="w-3 h-3" />
+                                            <Repeat v-else class="w-3 h-3" />
+                                            {{ ex.type === 'hold' ? 'HOLD' : 'REPS' }}
                                         </button>
 
                                         <span
@@ -290,10 +292,9 @@
 </template>
 
 <script setup lang="ts">
-import { X, Save, Trash2, Plus } from 'lucide-vue-next';
+import { X, Save, Trash2, Plus, Dumbbell, Activity, Timer, Repeat } from 'lucide-vue-next';
 import { useDragAndDrop } from '@formkit/drag-and-drop/vue';
 
-// ─── Types ───
 interface EditableExercise {
     id: string;
     name: string;
@@ -317,7 +318,6 @@ interface PaletteItem {
     reps?: number;
 }
 
-// ─── Props / Emits ───
 const props = defineProps<{
     open: boolean;
     mode: 'gym' | 'calist';
@@ -332,13 +332,11 @@ const emit = defineEmits<{
 
 const { secureFetch } = useAuth();
 
-// ─── Mobile detection ───
 const isMobile = ref(false);
 onMounted(() => {
     isMobile.value = window.matchMedia('(max-width: 767px)').matches;
 });
 
-// ─── Local state ───
 const localExercises = ref<EditableExercise[]>([]);
 const activePaletteItem = ref<PaletteItem | null>(null);
 const hoveredCardIdx = ref<number | null>(null);
@@ -360,20 +358,17 @@ const handleClose = () => {
     emit('close');
 };
 
-// ─── Drag-and-drop for exercise list ───
 const [exerciseListRef] = useDragAndDrop(localExercises, {
     dragHandle: '.drag-handle',
     plugins: [],
 });
 
-// ─── Day display name ───
 const dayNames: Record<string, string> = {
     monday: 'Senin', tuesday: 'Selasa', wednesday: 'Rabu',
     thursday: 'Kamis', friday: 'Jumat', saturday: 'Sabtu', sunday: 'Minggu',
 };
 const dayDisplayName = computed(() => dayNames[props.day] || props.day);
 
-// ─── Sync local exercises when sidebar opens or exercises change ───
 watch(
     () => props.open,
     (isOpen) => {
@@ -390,7 +385,6 @@ watch(
     { immediate: true }
 );
 
-// ─── Equipment presets by mode ───
 const gymEquipment = ['Barbell', 'Dumbbell', 'Cable', 'Smith Machine', 'Machine', 'EZ Bar', 'Kettlebell', 'Band'];
 const calistEquipment = ['Pull-up Bar', 'Parallettes', 'Band', 'Rings', 'Dip Bar', 'Chair', 'Floor'];
 
@@ -398,7 +392,6 @@ const equipmentPresets = computed(() =>
     props.mode === 'gym' ? gymEquipment : calistEquipment
 );
 
-// ─── Set scheme presets ───
 const setSchemes: SetScheme[] = [
     { label: '3×5',  sets: 3, reps: 5  },
     { label: '3×8',  sets: 3, reps: 8  },
@@ -411,7 +404,6 @@ const setSchemes: SetScheme[] = [
     { label: '5×3',  sets: 5, reps: 3  },
 ];
 
-// ─── Palette select / apply ───
 function selectSchemeTile(scheme: SetScheme) {
     if (activePaletteItem.value?.type === 'scheme' && activePaletteItem.value.label === scheme.label) {
         activePaletteItem.value = null;
@@ -460,7 +452,6 @@ function applyPaletteToCard(idx: number) {
     activePaletteItem.value = null;
 }
 
-// ─── Add exercise ───
 function openAddInput() {
     showAddInput.value = true;
     nextTick(() => addInputRef.value?.focus());
@@ -481,17 +472,14 @@ function confirmAddExercise() {
     showAddInput.value = false;
 }
 
-// ─── Remove exercise ───
 function removeExercise(idx: number) {
     localExercises.value.splice(idx, 1);
 }
 
-// ─── Remove equipment tag from card ───
 function removeEquipment(exIdx: number, eqIdx: number) {
     localExercises.value[exIdx].equipment.splice(eqIdx, 1);
 }
 
-// ─── Save to DB ───
 async function saveProgram() {
     isSaving.value = true;
     try {
@@ -510,7 +498,6 @@ async function saveProgram() {
         const existing = await secureFetch(`/api/program/get?mode=${props.mode}`) as any;
         const fullConfig = existing?.config ? { ...existing.config } : {};
         
-        // PERBAIKAN: Gabungkan data konfigurasi lama (name, focus, isRest) dengan exercises baru
         fullConfig[props.day] = { ...fullConfig[props.day], ...config[props.day] };
 
         await secureFetch('/api/program/save', {
@@ -526,7 +513,6 @@ async function saveProgram() {
     }
 }
 
-// ─── Keyboard: Escape dismisses palette selection ───
 function onKeyDown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
         if (activePaletteItem.value) {
