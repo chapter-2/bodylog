@@ -81,18 +81,24 @@ const step = ref(1);
 
 const localIsActive = ref(false);
 
-// ─── ENGINE PINTAR 3.0 (Anti Ghost-Refresh) ───
+// ─── PERBAIKAN FATAL: Engine yang tidak memicu reactivity loop! ───
 const evaluateTour = () => {
-    // Jangan jalankan apa pun jika belum setup atau belum login
     if (!hasMode.value || route.path === '/login' || !isAuthenticated.value) return;
 
     if (!localIsActive.value && !hasSeenTour.value) {
-        // USER BARU: Munculkan tour dan kunci cookie-nya langsung!
-        localIsActive.value = true;
-        step.value = 1;
-        completeTour(); 
+        // Gunakan jeda waktu untuk membiarkan komponen Navbar selesai dimuat di DOM
+        setTimeout(() => {
+            localIsActive.value = true;
+            step.value = 1;
+            
+            // RAHASIA: Set cookie SECARA MANUAL tanpa menyentuh hasSeenTour.value
+            // Ini mencegah Vue membunuh layar Onboarding secara tiba-tiba!
+            const tourCookie = useCookie('has_seen_tour', { path: '/', maxAge: 60 * 60 * 24 * 365 });
+            tourCookie.value = 'true' as any;
+        }, 800); 
+
     } else if (hasSeenTour.value && route.query.tour) {
-        // USER LAMA MEREFRESH: Jika ada sisa query URL dari tour yang sudah selesai, hapus!
+        // Membersihkan URL jika user me-refresh di tengah rute dengan query "tour"
         const query = { ...route.query };
         delete query.tour;
         navigateTo({ query }, { replace: true });
@@ -106,7 +112,7 @@ onMounted(() => {
 watch([hasMode, isAuthenticated, () => route.path], () => {
     evaluateTour();
 });
-// ───────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
 
 const contents = [
     { title: '01. Eksekusi Harian', desc: 'Ini medan tempurmu. Buka tiap hari latihan untuk mencatat progres beban dan repetisi.' },
@@ -119,7 +125,6 @@ const contents = [
 ];
 const currentContent = computed(() => contents[step.value - 1] || contents[0]);
 
-// ─── RADAR LOGIC ───
 const targetRect = ref<{ top: number; left: number; right: number; bottom: number; width: number; height: number } | null>(null);
 const windowWidth = ref(1024);
 let positionInterval: ReturnType<typeof setInterval> | null = null;
@@ -217,37 +222,48 @@ function getStep5Style() {
     }
 }
 
-watch(step, async (newVal) => {
+watch([step, localIsActive], async ([newStep, isActive]) => {
     if (typeof window === 'undefined') return;
-    const isMob = window.innerWidth < 768;
+    
+    // HANYA kontrol menu dan scroll JIKA TOUR SEDANG AKTIF
+    if (isActive) {
+        const isMob = window.innerWidth < 768;
 
-    if (newVal <= 3 && isMob) {
-        isMenuOpen.value = true;
+        if (newStep <= 3 && isMob) {
+            isMenuOpen.value = true;
+        } else {
+            isMenuOpen.value = false;
+        }
+
+        setTimeout(() => {
+            if (targetId.value) {
+                const el = document.getElementById(targetId.value);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (newStep <= 3 && !isMob) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }, 300);
+
+        if (positionInterval) clearInterval(positionInterval);
+        let attempts = 0;
+        positionInterval = setInterval(() => {
+            updatePosition();
+            attempts++;
+            if (attempts > 60 && positionInterval && step.value < 4) {
+                clearInterval(positionInterval);
+            }
+        }, 50);
+        
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true); 
     } else {
-        isMenuOpen.value = false;
+        // Bersihkan listener jika tour tidak aktif
+        if (positionInterval) clearInterval(positionInterval);
+        if (typeof window !== 'undefined') {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        }
     }
-
-    setTimeout(() => {
-        if (targetId.value) {
-            const el = document.getElementById(targetId.value);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else if (newVal <= 3 && !isMob) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }, 300);
-
-    if (positionInterval) clearInterval(positionInterval);
-    let attempts = 0;
-    positionInterval = setInterval(() => {
-        updatePosition();
-        attempts++;
-        if (attempts > 60 && positionInterval && step.value < 4) {
-            clearInterval(positionInterval);
-        }
-    }, 50);
-
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true); 
 }, { immediate: true });
 
 onUnmounted(() => {
@@ -279,5 +295,17 @@ async function nextStep() {
 
 function finishTour() {
     localIsActive.value = false;
+    completeTour(); // Sinkronisasi state global sekarang aman dilakukan
 }
 </script>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+@keyframes bounceIn {
+    0% { transform: scale(0.9); opacity: 0; }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+.animate-bounce-in { animation: bounceIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+</style>

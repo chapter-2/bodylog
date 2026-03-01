@@ -1,17 +1,8 @@
 <template>
-    <div
-        class="min-h-screen flex flex-col font-sans text-foreground-primary overflow-x-hidden"
-    >
-        <header
-            class="fixed inset-x-0 top-0 z-50 border-b border-separator bg-background/95 backdrop-blur-sm"
-        >
-            <nav
-                class="inner flex justify-between items-center h-20 px-4 md:px-0"
-            >
-                <NuxtLink
-                    to="/"
-                    class="font-black text-2xl tracking-tighter hover:text-primary transition-colors shrink-0"
-                >
+    <div class="min-h-screen flex flex-col font-sans text-foreground-primary overflow-x-hidden">
+        <header class="fixed inset-x-0 top-0 z-50 border-b border-separator bg-background/95 backdrop-blur-sm">
+            <nav class="inner flex justify-between items-center h-20 px-4 md:px-0">
+                <NuxtLink to="/" class="font-black text-2xl tracking-tighter hover:text-primary transition-colors shrink-0">
                     BODYLOG
                 </NuxtLink>
 
@@ -35,10 +26,7 @@
 
                 <div class="flex items-center gap-4">
                     <div class="hidden md:flex items-center gap-3">
-                        <button
-                            @click="showModeModal = true"
-                            class="flex items-center gap-1.5 px-3 py-1.5 border border-separator rounded-full text-xs font-mono font-bold uppercase tracking-wider hover:border-primary hover:text-primary transition-colors"
-                        >
+                        <button @click="showModeModal = true" class="flex items-center gap-1.5 px-3 py-1.5 border border-separator rounded-full text-xs font-mono font-bold uppercase tracking-wider hover:border-primary hover:text-primary transition-colors">
                             <Dumbbell v-if="isGym" class="w-3 h-3" />
                             <Activity v-else class="w-3 h-3" />
                             {{ isGym ? 'GYM' : 'CALIST' }}
@@ -92,6 +80,10 @@
                         </NuxtLink>
                         <NuxtLink to="/coach" id="mob-coach" @click="isMenuOpen = false" class="text-4xl font-black uppercase hover:text-primary transition-colors block text-primary">
                             <span class="text-primary text-sm font-mono mb-1 block">03</span>AI COACH
+                        </NuxtLink>
+                        
+                        <NuxtLink to="/profile" id="mob-profile" @click="isMenuOpen = false" class="text-4xl font-black uppercase hover:text-primary transition-colors block">
+                            <span class="text-primary text-sm font-mono mb-1 block">04</span>PROFILE
                         </NuxtLink>
 
                         <div class="h-px bg-separator my-2"></div>
@@ -183,12 +175,13 @@
 
 <script setup lang="ts">
 import { Menu, X, LogOut, Dumbbell, Activity, ChevronDown, User } from "lucide-vue-next";
+
+// PERBAIKAN: Ambil route untuk mengecek apakah user sedang di halaman login
+const route = useRoute(); 
 const { isAuthenticated, logout, checkAuth, user } = useAuth();
 const { isGym, isCalist, hasMode, setMode, mode, intensity, frequency } = useMode();
 
-// UBAH INI: isMenuOpen sekarang menjadi global state agar bisa dikontrol OnboardingTour
 const isMenuOpen = useState('isMenuOpen', () => false);
-
 const showLogoutModal = ref(false);
 const showModeModal = ref(false);
 const isUserMenuOpen = ref(false);
@@ -212,9 +205,24 @@ function selectMode(newMode: 'gym' | 'calist') {
     else navigateTo('/calist');
 }
 
+// ENGINE PINTAR UNTUK MODAL MODE
+// ENGINE PINTAR UNTUK MODAL MODE
+watchEffect(() => {
+    // Modal Pilih Mode HANYA BOLEH MUNCUL jika 3 syarat absolut ini terpenuhi:
+    // 1. User belum punya mode
+    // 2. User SUDAH TERBUKTI LOGIN (isAuthenticated)
+    // 3. User TIDAK sedang berada di halaman /login
+    if (!hasMode.value && isAuthenticated.value && route.path !== '/login') {
+        showModeModal.value = true;
+    } else {
+        showModeModal.value = false;
+    }
+});
+
 onMounted(() => {
     checkAuth();
-    if (!hasMode.value) showModeModal.value = true;
+    // Kita hapus eksekusi kasar "showModeModal = true" dari sini, 
+    // karena sudah ditangani secara elegan oleh watchEffect di atas.
 });
 </script>
 
