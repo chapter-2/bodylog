@@ -1,31 +1,31 @@
 export const TOUR_CONTENTS = [
   {
-    title: "01. Eksekusi Harian",
-    desc: "Ini medan tempurmu. Buka tiap hari latihan untuk mencatat progres beban dan repetisi.",
+    title: "01. Daily Execution",
+    desc: "Halaman utama untuk mencatat sesi latihanmu. Pantau target beban dan repetisi harian secara terstruktur di sini.",
   },
   {
     title: "02. Weigh-In",
-    desc: "Set targetmu (Bulk/Cut/Maintain) dan pantau deviasi berat badan mingguanmu secara presisi di sini.",
+    desc: "Set target fase latihanmu (Bulk/Cut/Maintain) dan pantau deviasi berat badan mingguan secara akurat.",
   },
   {
     title: "03. AI Coach",
-    desc: "Ekspor datamu ke CSV. Biarkan AI menganalisis letak plateau atau kesalahan rasio volume latihanmu.",
+    desc: "Ekspor datamu ke format CSV. Gunakan data ini untuk meminta AI menganalisis letak plateau atau mengevaluasi volume latihanmu.",
   },
   {
     title: "Program Editor",
-    desc: "Perhatikan tombol yang disorot ini. Klik untuk mengkustomisasi program (<i>drag-and-drop</i> urutan, ubah alat, set reps).",
+    desc: "Gunakan fitur ini untuk mengkustomisasi program latihan (mengubah urutan, mengganti alat, dan mengatur target repetisi).",
   },
   {
-    title: "Drag & Drop",
-    desc: 'Ini Sidebar Editor. <span class="inline md:hidden">Di HP muncul dari bawah.</span><span class="hidden md:inline">Di PC muncul dari kanan.</span><br><br>Ganti urutan, set target repetisi, dan catat alat alternatif (substitusi) di sini. Semua perubahan akan langsung tersimpan.',
+    title: "Editor Panel",
+    desc: 'Ini Sidebar Editor. <span class="inline md:hidden">Di perangkat mobile, menu ini muncul dari bawah.</span><span class="hidden md:inline">Di PC, menu ini muncul dari kanan.</span><br><br>Gunakan panah untuk mengatur urutan, atur target repetisi, dan catat substitusi alat di sini. Jangan lupa klik tombol <strong>Save Program</strong> untuk menyimpan.',
   },
   {
     title: "04. Program Dates",
-    desc: '<span class="text-primary font-bold">PENTING:</span> Atur tanggal mulai programmu di sini. Sistem akan menghitung Week 1, Week 2, dst secara otomatis berdasarkan tanggal ini.',
+    desc: '<span class="text-primary font-bold">PENTING:</span> Konfigurasi tanggal mulai programmu di sini. Sistem akan mengkalkulasi Week 1, Week 2, dan seterusnya secara otomatis.',
   },
   {
     title: "05. Weekly Schedule",
-    desc: '<span class="text-primary font-bold">PENTING:</span> Atur hari apa saja kamu latihan (ON) dan libur (OFF). Data tidak akan hilang meskipun harinya dimatikan.',
+    desc: '<span class="text-primary font-bold">PENTING:</span> Atur hari latihan (ON) dan hari libur (OFF) secara global. Riwayat data tidak akan hilang meskipun jadwal hari tersebut dinonaktifkan.',
   },
 ];
 
