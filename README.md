@@ -12,4 +12,4 @@ docker compose up --build -d
 
 ## License
 
-MIT — lihat [LICENSE](LICENSE)
+Check [LICENSE](LICENSE)
