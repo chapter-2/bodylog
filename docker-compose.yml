@@ -6,7 +6,6 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # SQLite database persisted outside the container
       - bodylog_data:/data
     environment:
       NODE_ENV: production

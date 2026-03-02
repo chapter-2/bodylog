@@ -46,18 +46,11 @@ export default defineNuxtConfig({
     display: "swap",
   },
 
-  // ── BUG-01 FIX: runtimeConfig.appPassword removed.
-  // Auth now uses username + password stored in the `users` SQLite table.
-  // server/api/auth/verify.post.ts is deprecated — do not call it.
-
   colorMode: {
     preference: "dark",
     fallback: "dark",
   },
 
-  // ── CRITICAL: better-sqlite3 is a native addon (.node binary).
-  // It cannot be bundled by Rollup. Node must resolve it from disk.
-  // Do NOT change this to externals.inline — that will break the build.
   nitro: {
     rollupConfig: {
       external: ["better-sqlite3"],
