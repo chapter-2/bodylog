@@ -122,6 +122,8 @@ const customProgram = ref<Record<
     { exercises?: any[]; name?: string; focus?: string; isRest?: boolean }
 > | null>(null);
 
+let currentFetchId = 0;
+
 const effectiveTemplates = computed(() => {
     const result: Record<string, any> = {};
     for (const day of ALL_DAYS) {
@@ -209,10 +211,7 @@ function triggerCelebration() {
 
     const interval: any = setInterval(function () {
         const timeLeft = animationEnd - Date.now();
-
-        if (timeLeft <= 0) {
-            return clearInterval(interval);
-        }
+        if (timeLeft <= 0) return clearInterval(interval);
 
         const particleCount = 50 * (timeLeft / duration);
         confetti({
@@ -316,9 +315,7 @@ function initializeExercises() {
 }
 
 async function loadLastWeekData() {
-    lastWeekData.value = {};
     if (props.week <= 1) return;
-
     try {
         if (dayName.value === "REST DAY") return;
         const { data } = await secureFetch(
@@ -402,6 +399,8 @@ async function saveWorkout() {
         return;
     }
 
+    if (saving.value) return;
+
     saving.value = true;
     saveError.value = "";
 
@@ -435,10 +434,7 @@ async function saveWorkout() {
         lastSaved.value = `${dateStr} ${timeStr}`;
         emit("saved");
 
-        if (completed.value) {
-            triggerCelebration();
-        }
-
+        if (completed.value) triggerCelebration();
         completed.value = false;
     } catch (error: any) {
         if (error.statusCode === 401) {
@@ -483,26 +479,29 @@ onUnmounted(() => {
 watch(
     () => props.day,
     async () => {
+        const fetchId = ++currentFetchId;
         initializeExercises();
         sessionNote.value = "";
         completed.value = false;
         lastWeekData.value = {};
         if (dayName.value !== "REST DAY") {
             await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+            if (fetchId !== currentFetchId) return;
         }
     },
 );
 
 watch(
     () => props.week,
-    () => {
+    async () => {
+        const fetchId = ++currentFetchId;
         initializeExercises();
         sessionNote.value = "";
         completed.value = false;
         lastWeekData.value = {};
         if (dayName.value !== "REST DAY") {
-            loadLastWeekData();
-            loadCurrentSession();
+            await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+            if (fetchId !== currentFetchId) return;
         }
     },
 );

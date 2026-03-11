@@ -86,6 +86,9 @@ export function useTimer() {
     } else {
       if (timerSeconds.value === 0) timerSeconds.value = 90;
       timerActive.value = true;
+
+      if (timerInterval) clearInterval(timerInterval);
+
       timerInterval = setInterval(() => {
         if (timerSeconds.value > 0) {
           timerSeconds.value--;

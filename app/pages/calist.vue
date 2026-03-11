@@ -167,42 +167,43 @@
                 </div>
 
                 <div
-                    class="flex items-center justify-center gap-6 mt-8 select-none"
+                    class="flex items-center justify-center gap-2 md:gap-6 mt-8 select-none"
                 >
                     <button
                         @click="currentWeek = Math.max(1, currentWeek - 1)"
-                        class="group flex items-center gap-1 text-xs font-mono uppercase hover:text-primary transition-colors disabled:opacity-30"
+                        class="group flex items-center gap-2 p-3 md:p-4 text-xs md:text-sm font-mono uppercase hover:text-primary transition-colors disabled:opacity-30 active:scale-95 cursor-pointer"
                         :disabled="currentWeek === 1"
                     >
                         <ChevronLeft
-                            class="w-4 h-4 group-hover:-translate-x-1 transition-transform"
+                            class="w-6 h-6 group-hover:-translate-x-1 transition-transform"
                         />
                         Prev
                     </button>
                     <div class="flex flex-col items-center min-w-[140px]">
-                        <span class="font-black text-2xl leading-none"
+                        <span
+                            class="font-black text-2xl md:text-3xl leading-none"
                             >WEEK {{ currentWeek }}</span
                         >
                         <button
                             v-if="currentWeek !== calculatedWeek"
                             @click="initializeProgram"
-                            class="text-[10px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded mt-1 hover:bg-primary/20 transition-colors uppercase font-bold tracking-widest active:scale-95"
+                            class="text-[10px] font-mono text-primary bg-primary/10 px-3 py-1 rounded mt-2 hover:bg-primary/20 transition-colors uppercase font-bold tracking-widest active:scale-95 cursor-pointer"
                         >
                             Return to W{{ calculatedWeek }}
                         </button>
                         <span
                             v-else
-                            class="text-[10px] font-mono text-foreground-text opacity-60 tracking-widest uppercase mt-1"
+                            class="text-[10px] font-mono text-foreground-text opacity-60 tracking-widest uppercase mt-2"
                             >Calist Program</span
                         >
                     </div>
                     <button
                         @click="currentWeek++"
-                        class="group flex items-center gap-1 text-xs font-mono uppercase hover:text-primary transition-colors"
+                        class="group flex items-center gap-2 p-3 md:p-4 text-xs md:text-sm font-mono uppercase hover:text-primary transition-colors active:scale-95 cursor-pointer"
                     >
                         Next
                         <ChevronRight
-                            class="w-4 h-4 group-hover:translate-x-1 transition-transform"
+                            class="w-6 h-6 group-hover:translate-x-1 transition-transform"
                         />
                     </button>
                 </div>

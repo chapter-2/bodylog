@@ -102,6 +102,8 @@ const customProgram = ref<Record<
     { exercises?: any[]; name?: string; focus?: string; isRest?: boolean }
 > | null>(null);
 
+let currentFetchId = 0;
+
 const effectiveTemplates = computed(() => {
     const result: Record<string, any> = {};
     for (const day of ALL_DAYS) {
@@ -156,10 +158,7 @@ function triggerCelebration() {
 
     const interval: any = setInterval(function () {
         const timeLeft = animationEnd - Date.now();
-
-        if (timeLeft <= 0) {
-            return clearInterval(interval);
-        }
+        if (timeLeft <= 0) return clearInterval(interval);
 
         const particleCount = 50 * (timeLeft / duration);
         confetti({
@@ -249,9 +248,7 @@ function initializeExercises() {
 }
 
 async function loadLastWeekData() {
-    lastWeekData.value = {};
     if (props.week <= 1) return;
-
     try {
         if (dayName.value === "REST DAY") return;
         const { data } = await secureFetch(`/api/gym/get?day=${dayName.value}`);
@@ -275,11 +272,10 @@ async function loadLastWeekData() {
                         );
                         if (exerciseRow) break;
                     }
-                    if (!exerciseRow) {
+                    if (!exerciseRow)
                         exerciseRow = lastWeekWorkouts.find(
                             (row: any) => row[4] === templateEx.name,
                         );
-                    }
                 } else {
                     exerciseRow = lastWeekWorkouts.find(
                         (row: any) => row[4] === templateEx.name,
@@ -324,11 +320,10 @@ async function loadCurrentSession() {
                         );
                         if (savedRow) break;
                     }
-                    if (!savedRow) {
+                    if (!savedRow)
                         savedRow = currentSessionRows.find(
                             (row: any) => row[4] === exercise.name,
                         );
-                    }
                 } else {
                     savedRow = currentSessionRows.find(
                         (row: any) => row[4] === exercise.name,
@@ -355,7 +350,6 @@ async function loadCurrentSession() {
                     if (savedRow[10]) exercise.note = savedRow[10];
                 }
             });
-
             if (currentSessionRows[0][9] === "YES") completed.value = true;
         }
     } catch (error) {}
@@ -367,6 +361,8 @@ async function saveWorkout() {
         navigateTo("/login");
         return;
     }
+
+    if (saving.value) return;
 
     saving.value = true;
     saveError.value = "";
@@ -402,10 +398,7 @@ async function saveWorkout() {
         lastSaved.value = `${dateStr} ${timeStr}`;
         emit("saved");
 
-        if (completed.value) {
-            triggerCelebration();
-        }
-
+        if (completed.value) triggerCelebration();
         completed.value = false;
     } catch (error: any) {
         if (error.statusCode === 401) {
@@ -450,26 +443,29 @@ onUnmounted(() => {
 watch(
     () => props.day,
     async () => {
+        const fetchId = ++currentFetchId;
         initializeExercises();
         sessionNote.value = "";
         completed.value = false;
         lastWeekData.value = {};
         if (dayName.value !== "REST DAY") {
             await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+            if (fetchId !== currentFetchId) return;
         }
     },
 );
 
 watch(
     () => props.week,
-    () => {
+    async () => {
+        const fetchId = ++currentFetchId;
         initializeExercises();
         sessionNote.value = "";
         completed.value = false;
         lastWeekData.value = {};
         if (dayName.value !== "REST DAY") {
-            loadLastWeekData();
-            loadCurrentSession();
+            await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+            if (fetchId !== currentFetchId) return;
         }
     },
 );
@@ -477,9 +473,7 @@ watch(
 watch(
     () => route.query.tour,
     (newVal) => {
-        if (newVal === "step5") {
-            setTimeout(() => openProgramEditor(), 100);
-        }
+        if (newVal === "step5") setTimeout(() => openProgramEditor(), 100);
     },
     { immediate: true },
 );

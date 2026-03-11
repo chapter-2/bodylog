@@ -5,6 +5,14 @@ export default defineEventHandler(async (event) => {
 
   try {
     const body = await readBody<CalistSession>(event);
+
+    if (!body || !Array.isArray(body.exercises)) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Invalid payload: exercises must be an array",
+      });
+    }
+
     const db = getDb();
 
     const upsert = db.prepare(`
