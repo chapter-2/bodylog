@@ -26,3 +26,6 @@ logs
 # Other
 CLAUDE.md
 context.md
+data/*.db
+data/*.db-shm
+data/*.db-wal
