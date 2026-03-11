@@ -197,7 +197,9 @@
                         <input
                             v-model.number="set.value"
                             type="number"
-                            placeholder="0"
+                            :placeholder="
+                                exercise.type === 'hold' ? 'SEC' : 'REPS'
+                            "
                             class="w-full bg-transparent border-b border-separator py-1 font-bold text-center focus:outline-none focus:border-primary transition-colors"
                         />
                     </div>

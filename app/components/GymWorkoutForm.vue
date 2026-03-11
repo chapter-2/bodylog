@@ -9,7 +9,9 @@
             @open-rules="showRules = true"
             @edit-program="handleEditClick"
         />
+
         <RestDayState v-if="exercises.length === 0" />
+
         <form
             v-else
             @submit.prevent="saveWorkout"
@@ -31,11 +33,13 @@
                 :save-error="saveError"
             />
         </form>
+
         <LoggingRulesModal
             :show="showRules"
             mode="gym"
             @close="showRules = false"
         />
+
         <ProgramEditorSidebar
             :open="showProgramEditor"
             mode="gym"
@@ -48,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, onUnmounted, watchEffect } from "vue";
 import type { Exercise } from "~/types";
 import ExerciseCard from "~/components/workout/ExerciseCard.vue";
 import WorkoutHeader from "~/components/workout/WorkoutHeader.vue";
@@ -57,6 +61,7 @@ import SessionNotes from "~/components/workout/SessionNotes.vue";
 import ProgressiveTip from "~/components/workout/ProgressiveTip.vue";
 import SaveFooter from "~/components/workout/SaveFooter.vue";
 import LoggingRulesModal from "~/components/workout/LoggingRulesModal.vue";
+import { useTimer } from "~/composables/useTimer";
 
 interface UIExercise extends Exercise {
     variants?: string[];
@@ -78,6 +83,7 @@ interface SidebarExercise {
 const props = defineProps<{ week: number; day: string }>();
 const emit = defineEmits(["saved"]);
 const { isAuthenticated, secureFetch } = useAuth();
+const { showOnWorkoutPage } = useTimer();
 const route = useRoute();
 
 const exercises = ref<UIExercise[]>([]);
@@ -107,6 +113,7 @@ const effectiveTemplates = computed(() => {
         const custom = customProgram.value?.[day];
         const isRest =
             custom?.isRest !== undefined ? custom.isRest : def.isRest;
+
         if (isRest) {
             result[day] = { name: "REST DAY", focus: "Recover", exercises: [] };
         } else if (custom) {
@@ -146,6 +153,7 @@ function handleEditClick() {
 function openProgramEditor() {
     const template = effectiveTemplates.value[props.day];
     if (!template) return;
+
     sidebarExercises.value = template.exercises.map((ex: any, idx: number) => ({
         id: `ex-${props.day}-${idx}-${ex.name.slice(0, 5)}`,
         name: ex.name,
@@ -187,6 +195,7 @@ function initializeExercises() {
         exercises.value = [];
         return;
     }
+
     exercises.value = template.exercises.map((ex: any) => {
         const variants = parseVariants(ex.name);
         return {
@@ -195,7 +204,7 @@ function initializeExercises() {
             selectedVariant: variants ? variants[0] : undefined,
             sets: Array(ex.sets)
                 .fill(null)
-                .map(() => ({ weight: 0, reps: 0 })),
+                .map(() => ({ weight: null, reps: null })),
             note: "",
             showNote: false,
             targetReps: ex.targetReps,
@@ -214,13 +223,16 @@ async function loadLastWeekData() {
         const lastWeekWorkouts = data.filter(
             (row: any) => parseInt(row[0]) === props.week - 1,
         );
+
         if (lastWeekWorkouts.length > 0) {
             const template = effectiveTemplates.value[props.day];
             const dataMap: Record<number, { sets: string[]; name: string }> =
                 {};
+
             template?.exercises.forEach((templateEx: any, idx: number) => {
                 const variants = parseVariants(templateEx.name);
                 let exerciseRow: any = null;
+
                 if (variants) {
                     for (const v of variants) {
                         exerciseRow = lastWeekWorkouts.find(
@@ -228,15 +240,17 @@ async function loadLastWeekData() {
                         );
                         if (exerciseRow) break;
                     }
-                    if (!exerciseRow)
+                    if (!exerciseRow) {
                         exerciseRow = lastWeekWorkouts.find(
                             (row: any) => row[4] === templateEx.name,
                         );
+                    }
                 } else {
                     exerciseRow = lastWeekWorkouts.find(
                         (row: any) => row[4] === templateEx.name,
                     );
                 }
+
                 if (exerciseRow) {
                     const sets = [
                         exerciseRow[5],
@@ -249,9 +263,7 @@ async function loadLastWeekData() {
             });
             lastWeekData.value = dataMap;
         }
-    } catch (error) {
-        console.error(error);
-    }
+    } catch (error) {}
 }
 
 async function loadCurrentSession() {
@@ -261,14 +273,15 @@ async function loadCurrentSession() {
         const currentSessionRows = data.filter(
             (row: any) => parseInt(row[0]) === props.week,
         );
+
         if (currentSessionRows.length > 0) {
             const firstRow = currentSessionRows[0];
-            if (firstRow[11]) {
-                sessionNote.value = firstRow[11];
-            }
+            if (firstRow[11]) sessionNote.value = firstRow[11];
+
             exercises.value.forEach((exercise) => {
                 const variants = exercise.variants;
                 let savedRow: any = null;
+
                 if (variants) {
                     for (const v of variants) {
                         savedRow = currentSessionRows.find(
@@ -276,18 +289,21 @@ async function loadCurrentSession() {
                         );
                         if (savedRow) break;
                     }
-                    if (!savedRow)
+                    if (!savedRow) {
                         savedRow = currentSessionRows.find(
                             (row: any) => row[4] === exercise.name,
                         );
+                    }
                 } else {
                     savedRow = currentSessionRows.find(
                         (row: any) => row[4] === exercise.name,
                     );
                 }
+
                 if (savedRow) {
-                    if (variants && variants.includes(savedRow[4]))
+                    if (variants && variants.includes(savedRow[4])) {
                         exercise.selectedVariant = savedRow[4];
+                    }
                     exercise.sets.forEach((set, idx) => {
                         const setString = savedRow[5 + idx];
                         if (setString && setString !== "-") {
@@ -296,19 +312,18 @@ async function loadCurrentSession() {
                                 set.weight =
                                     parseFloat(
                                         parts[0].replace("kg", "").trim(),
-                                    ) || 0;
-                                set.reps = parseFloat(parts[1].trim()) || 0;
+                                    ) || null;
+                                set.reps = parseFloat(parts[1].trim()) || null;
                             }
                         }
                     });
                     if (savedRow[10]) exercise.note = savedRow[10];
                 }
             });
+
             if (currentSessionRows[0][9] === "YES") completed.value = true;
         }
-    } catch (error) {
-        console.error(error);
-    }
+    } catch (error) {}
 }
 
 async function saveWorkout() {
@@ -317,8 +332,10 @@ async function saveWorkout() {
         navigateTo("/login");
         return;
     }
+
     saving.value = true;
     saveError.value = "";
+
     try {
         const now = new Date();
         const dateStr = now.toLocaleDateString("id-ID");
@@ -326,12 +343,14 @@ async function saveWorkout() {
             hour: "2-digit",
             minute: "2-digit",
         });
+
         const exercisePayload = exercises.value.map((ex) => ({
             name: effectiveName(ex),
             templateName: ex.name,
             sets: ex.sets,
             note: ex.note || "",
         }));
+
         await secureFetch("/api/gym/save", {
             method: "POST",
             body: {
@@ -344,6 +363,7 @@ async function saveWorkout() {
                 sessionNote: sessionNote.value || "",
             },
         });
+
         lastSaved.value = `${dateStr} ${timeStr}`;
         emit("saved");
         completed.value = false;
@@ -369,11 +389,22 @@ onMounted(async () => {
     } catch {}
 
     initializeExercises();
+
     if (dayName.value !== "REST DAY") {
         await Promise.all([loadLastWeekData(), loadCurrentSession()]);
     }
-    if (route.query.tour === "editor")
+
+    if (route.query.tour === "editor") {
         setTimeout(() => openProgramEditor(), 500);
+    }
+});
+
+watchEffect(() => {
+    showOnWorkoutPage.value = exercises.value.length > 0;
+});
+
+onUnmounted(() => {
+    showOnWorkoutPage.value = false;
 });
 
 watch(
@@ -381,8 +412,9 @@ watch(
     async () => {
         initializeExercises();
         sessionNote.value = "";
-        if (dayName.value !== "REST DAY")
+        if (dayName.value !== "REST DAY") {
             await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+        }
     },
 );
 
@@ -400,7 +432,9 @@ watch(
 watch(
     () => route.query.tour,
     (newVal) => {
-        if (newVal === "step5") setTimeout(() => openProgramEditor(), 100);
+        if (newVal === "step5") {
+            setTimeout(() => openProgramEditor(), 100);
+        }
     },
     { immediate: true },
 );

@@ -9,7 +9,9 @@
             @open-rules="showRules = true"
             @edit-program="handleEditClick"
         />
+
         <RestDayState v-if="exercises.length === 0" />
+
         <form
             v-else
             @submit.prevent="saveWorkout"
@@ -31,11 +33,13 @@
                 :save-error="saveError"
             />
         </form>
+
         <LoggingRulesModal
             :show="showRules"
             mode="calist"
             @close="showRules = false"
         />
+
         <ProgramEditorSidebar
             :open="showProgramEditor"
             mode="calist"
@@ -48,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, onUnmounted, watchEffect } from "vue";
 import ExerciseCard from "~/components/workout/ExerciseCard.vue";
 import WorkoutHeader from "~/components/workout/WorkoutHeader.vue";
 import RestDayState from "~/components/workout/RestDayState.vue";
@@ -56,14 +60,17 @@ import SessionNotes from "~/components/workout/SessionNotes.vue";
 import ProgressiveTip from "~/components/workout/ProgressiveTip.vue";
 import SaveFooter from "~/components/workout/SaveFooter.vue";
 import LoggingRulesModal from "~/components/workout/LoggingRulesModal.vue";
+import { useTimer } from "~/composables/useTimer";
 
 interface UISet {
-    value: number;
+    value: number | null;
 }
+
 interface SubOption {
     label: string;
     value: string;
 }
+
 interface UIExercise {
     name: string;
     type: "reps" | "hold";
@@ -74,6 +81,7 @@ interface UIExercise {
     showNote?: boolean;
     targetReps?: number;
 }
+
 interface SidebarExercise {
     id: string;
     name: string;
@@ -82,6 +90,7 @@ interface SidebarExercise {
     equipment: string[];
     type: "reps" | "hold";
 }
+
 interface ExerciseDef {
     name: string;
     type: "reps" | "hold";
@@ -94,6 +103,7 @@ interface ExerciseDef {
 const props = defineProps<{ week: number; day: string }>();
 const emit = defineEmits(["saved"]);
 const { isAuthenticated, secureFetch } = useAuth();
+const { showOnWorkoutPage } = useTimer();
 const route = useRoute();
 
 const exercises = ref<UIExercise[]>([]);
@@ -123,6 +133,7 @@ const effectiveTemplates = computed(() => {
         const custom = customProgram.value?.[day];
         const isRest =
             custom?.isRest !== undefined ? custom.isRest : def.isRest;
+
         if (isRest) {
             result[day] = { name: "REST DAY", focus: "Recover", exercises: [] };
         } else if (custom) {
@@ -195,6 +206,7 @@ function handleEditClick() {
 function openProgramEditor() {
     const template = effectiveTemplates.value[props.day];
     if (!template) return;
+
     sidebarExercises.value = template.exercises.map(
         (def: any, idx: number) => ({
             id: `ex-calist-${props.day}-${idx}`,
@@ -237,14 +249,14 @@ function allPossibleNames(ex: UIExercise | ExerciseDef): string[] {
     return [base, ...subs.map((s: SubOption) => s.value)];
 }
 
-function formatSetValue(ex: UIExercise, val: number): string {
-    if (!val || val <= 0) return "-";
+function formatSetValue(ex: UIExercise, val: number | null): string {
+    if (val === null || val <= 0) return "-";
     return ex.type === "hold" ? `${val}s` : `${val} reps`;
 }
 
-function parseSetValue(stored: string): number {
-    if (!stored || stored === "-") return 0;
-    return parseInt(stored) || 0;
+function parseSetValue(stored: string): number | null {
+    if (!stored || stored === "-") return null;
+    return parseInt(stored) || null;
 }
 
 function initializeExercises() {
@@ -258,7 +270,7 @@ function initializeExercises() {
         type: def.type,
         sets: Array(def.setCount)
             .fill(null)
-            .map(() => ({ value: 0 })),
+            .map(() => ({ value: null })),
         subs: def.subs,
         selectedSub: def.subs ? def.subs[0].value : undefined,
         note: "",
@@ -280,10 +292,12 @@ async function loadLastWeekData() {
         const lastWeekRows = (data as any[]).filter(
             (row: any) => parseInt(row[0]) === props.week - 1,
         );
+
         if (lastWeekRows.length > 0) {
             const template = effectiveTemplates.value[props.day];
             const dataMap: Record<number, { sets: string[]; name: string }> =
                 {};
+
             template?.exercises.forEach((def: any, idx: number) => {
                 const possibleNames = allPossibleNames(def);
                 let exerciseRow: any = null;
@@ -303,9 +317,7 @@ async function loadLastWeekData() {
             });
             lastWeekData.value = dataMap;
         }
-    } catch (error) {
-        console.error(error);
-    }
+    } catch (error) {}
 }
 
 async function loadCurrentSession() {
@@ -317,11 +329,11 @@ async function loadCurrentSession() {
         const currentRows = (data as any[]).filter(
             (row: any) => parseInt(row[0]) === props.week,
         );
+
         if (currentRows.length > 0) {
             const firstRow = currentRows[0];
-            if (firstRow[11]) {
-                sessionNote.value = firstRow[11];
-            }
+            if (firstRow[11]) sessionNote.value = firstRow[11];
+
             exercises.value.forEach((exercise) => {
                 const possibleNames = allPossibleNames(exercise);
                 let savedRow: any = null;
@@ -345,9 +357,7 @@ async function loadCurrentSession() {
             });
             if (currentRows[0][9] === "YES") completed.value = true;
         }
-    } catch (error) {
-        console.error(error);
-    }
+    } catch (error) {}
 }
 
 async function saveWorkout() {
@@ -356,8 +366,10 @@ async function saveWorkout() {
         navigateTo("/login");
         return;
     }
+
     saving.value = true;
     saveError.value = "";
+
     try {
         const now = new Date();
         const dateStr = now.toLocaleDateString("id-ID");
@@ -365,11 +377,13 @@ async function saveWorkout() {
             hour: "2-digit",
             minute: "2-digit",
         });
+
         const exercisePayload = exercises.value.map((ex) => ({
             name: effectiveName(ex),
             sets: ex.sets.map((s) => formatSetValue(ex, s.value)),
             note: ex.note || "",
         }));
+
         await secureFetch("/api/calist/save", {
             method: "POST",
             body: {
@@ -382,6 +396,7 @@ async function saveWorkout() {
                 sessionNote: sessionNote.value || "",
             },
         });
+
         lastSaved.value = `${dateStr} ${timeStr}`;
         emit("saved");
         completed.value = false;
@@ -407,11 +422,22 @@ onMounted(async () => {
     } catch {}
 
     initializeExercises();
+
     if (dayName.value !== "REST DAY") {
         await Promise.all([loadLastWeekData(), loadCurrentSession()]);
     }
-    if (route.query.tour === "editor")
+
+    if (route.query.tour === "editor") {
         setTimeout(() => openProgramEditor(), 500);
+    }
+});
+
+watchEffect(() => {
+    showOnWorkoutPage.value = exercises.value.length > 0;
+});
+
+onUnmounted(() => {
+    showOnWorkoutPage.value = false;
 });
 
 watch(
@@ -419,8 +445,9 @@ watch(
     async () => {
         initializeExercises();
         sessionNote.value = "";
-        if (dayName.value !== "REST DAY")
+        if (dayName.value !== "REST DAY") {
             await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+        }
     },
 );
 
