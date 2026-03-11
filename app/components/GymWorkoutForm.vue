@@ -53,6 +53,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted, watchEffect } from "vue";
+import confetti from "canvas-confetti";
 import type { Exercise } from "~/types";
 import ExerciseCard from "~/components/workout/ExerciseCard.vue";
 import WorkoutHeader from "~/components/workout/WorkoutHeader.vue";
@@ -138,6 +139,41 @@ const dayName = computed(
 const dayFocus = computed(
     () => effectiveTemplates.value[props.day]?.focus || "Recover",
 );
+
+function triggerCelebration() {
+    const duration = 3000;
+    const animationEnd = Date.now() + duration;
+    const defaults = {
+        startVelocity: 30,
+        spread: 360,
+        ticks: 60,
+        zIndex: 99999,
+    };
+
+    function randomInRange(min: number, max: number) {
+        return Math.random() * (max - min) + min;
+    }
+
+    const interval: any = setInterval(function () {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+            return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+        });
+        confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+        });
+    }, 250);
+}
 
 function handleEditClick() {
     if (!isAuthenticated.value) {
@@ -366,6 +402,11 @@ async function saveWorkout() {
 
         lastSaved.value = `${dateStr} ${timeStr}`;
         emit("saved");
+
+        if (completed.value) {
+            triggerCelebration();
+        }
+
         completed.value = false;
     } catch (error: any) {
         if (error.statusCode === 401) {

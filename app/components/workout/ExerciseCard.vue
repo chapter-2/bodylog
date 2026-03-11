@@ -165,11 +165,24 @@
             <div
                 v-for="(set, setIdx) in exercise.sets"
                 :key="setIdx"
-                class="flex items-center gap-2"
+                class="flex items-center gap-2 transition-all duration-500 ease-out"
+                :class="
+                    isSetCompleted(set)
+                        ? 'opacity-40 hover:opacity-100 focus-within:opacity-100 scale-[0.98]'
+                        : 'opacity-100 scale-100'
+                "
             >
-                <span class="font-mono text-xs text-primary w-6 pt-1"
-                    >S{{ setIdx + 1 }}</span
+                <span
+                    class="font-mono text-xs w-6 pt-1 transition-colors flex items-center gap-0.5"
+                    :class="
+                        isSetCompleted(set)
+                            ? 'text-emerald-500 font-black'
+                            : 'text-primary'
+                    "
                 >
+                    <span v-if="isSetCompleted(set)">✓</span>
+                    <span v-else>S{{ setIdx + 1 }}</span>
+                </span>
 
                 <template v-if="mode === 'gym'">
                     <div class="relative w-full">
@@ -179,6 +192,10 @@
                             step="0.5"
                             placeholder="KG"
                             class="w-full bg-transparent border-b border-separator py-1 font-bold text-center focus:outline-none focus:border-primary transition-colors"
+                            :class="{
+                                'text-emerald-700 border-emerald-200':
+                                    isSetCompleted(set),
+                            }"
                         />
                     </div>
                     <span class="text-separator text-sm">×</span>
@@ -188,6 +205,10 @@
                             type="number"
                             placeholder="REPS"
                             class="w-full bg-transparent border-b border-separator py-1 font-bold text-center focus:outline-none focus:border-primary transition-colors"
+                            :class="{
+                                'text-emerald-700 border-emerald-200':
+                                    isSetCompleted(set),
+                            }"
                         />
                     </div>
                 </template>
@@ -201,6 +222,10 @@
                                 exercise.type === 'hold' ? 'SEC' : 'REPS'
                             "
                             class="w-full bg-transparent border-b border-separator py-1 font-bold text-center focus:outline-none focus:border-primary transition-colors"
+                            :class="{
+                                'text-emerald-700 border-emerald-200':
+                                    isSetCompleted(set),
+                            }"
                         />
                     </div>
                     <span class="text-separator text-xs font-mono shrink-0">
@@ -257,4 +282,16 @@ const selectedOption = computed({
         else exercise.value.selectedSub = val;
     },
 });
+
+function isSetCompleted(set: any): boolean {
+    if (props.mode === "gym") {
+        return (
+            set.weight !== null &&
+            set.weight !== "" &&
+            set.reps !== null &&
+            set.reps !== ""
+        );
+    }
+    return set.value !== null && set.value !== "";
+}
 </script>
