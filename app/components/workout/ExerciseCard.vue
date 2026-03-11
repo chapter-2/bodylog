@@ -131,27 +131,38 @@
             v-if="lastWeekData"
             class="mb-4 p-3 bg-background rounded border border-separator"
         >
-            <span
-                class="font-mono text-xs uppercase tracking-wider text-foreground-text opacity-70"
-            >
-                Last Week (W{{ week - 1 }}):
+            <div class="flex items-center justify-between gap-2 mb-1">
                 <span
-                    v-if="
-                        lastWeekData.name && lastWeekData.name !== effectiveName
-                    "
-                    class="text-primary ml-1"
+                    class="font-mono text-xs uppercase tracking-wider text-foreground-text opacity-70"
                 >
-                    [{{ lastWeekData.name }}]
+                    Last Week (W{{ week - 1 }}):
+                    <span
+                        v-if="
+                            lastWeekData.name &&
+                            lastWeekData.name !== effectiveName
+                        "
+                        class="text-primary ml-1"
+                    >
+                        [{{ lastWeekData.name }}]
+                    </span>
                 </span>
-            </span>
+                <span
+                    class="font-mono text-[9px] text-primary/60 bg-primary/5 px-1.5 py-0.5 rounded uppercase hidden md:inline-block"
+                    >Tap to copy</span
+                >
+            </div>
+
             <div class="flex gap-2 mt-1 flex-wrap">
-                <span
-                    v-for="(set, idx) in lastWeekData.sets"
+                <button
+                    type="button"
+                    v-for="(setStr, idx) in lastWeekData.sets"
                     :key="idx"
-                    class="font-mono text-xs bg-white px-2 py-1 rounded border border-separator"
+                    @click="copyLastWeekSet(idx, setStr)"
+                    class="font-mono text-xs bg-white px-2 py-1 rounded border border-separator cursor-pointer hover:border-primary hover:bg-primary/10 hover:text-primary transition-all active:scale-95"
+                    title="Tap to autofill this set"
                 >
-                    {{ set }}
-                </span>
+                    {{ setStr }}
+                </button>
             </div>
         </div>
 
@@ -191,6 +202,7 @@
                             type="number"
                             step="0.5"
                             placeholder="KG"
+                            @focus="$event.target.select()"
                             class="w-full bg-transparent border-b border-separator py-1 font-bold text-center focus:outline-none focus:border-primary transition-colors"
                             :class="{
                                 'text-emerald-700 border-emerald-200':
@@ -204,6 +216,7 @@
                             v-model.number="set.reps"
                             type="number"
                             placeholder="REPS"
+                            @focus="$event.target.select()"
                             class="w-full bg-transparent border-b border-separator py-1 font-bold text-center focus:outline-none focus:border-primary transition-colors"
                             :class="{
                                 'text-emerald-700 border-emerald-200':
@@ -221,6 +234,7 @@
                             :placeholder="
                                 exercise.type === 'hold' ? 'SEC' : 'REPS'
                             "
+                            @focus="$event.target.select()"
                             class="w-full bg-transparent border-b border-separator py-1 font-bold text-center focus:outline-none focus:border-primary transition-colors"
                             :class="{
                                 'text-emerald-700 border-emerald-200':
@@ -293,5 +307,24 @@ function isSetCompleted(set: any): boolean {
         );
     }
     return set.value !== null && set.value !== "";
+}
+
+function copyLastWeekSet(index: number, setString: string) {
+    if (!exercise.value.sets[index]) return;
+
+    if (props.mode === "gym") {
+        const parts = setString.replace(/kg/gi, "").split("×");
+        if (parts.length === 2) {
+            exercise.value.sets[index].weight = parseFloat(parts[0].trim());
+            exercise.value.sets[index].reps = parseFloat(parts[1].trim());
+        }
+    } else {
+        const parsedVal = parseFloat(setString);
+        if (!isNaN(parsedVal)) {
+            exercise.value.sets[index].value = parsedVal;
+        }
+    }
+
+    if ("vibrate" in navigator) navigator.vibrate(50);
 }
 </script>

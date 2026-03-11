@@ -316,10 +316,9 @@ function initializeExercises() {
 }
 
 async function loadLastWeekData() {
-    if (props.week <= 1) {
-        lastWeekData.value = {};
-        return;
-    }
+    lastWeekData.value = {};
+    if (props.week <= 1) return;
+
     try {
         if (dayName.value === "REST DAY") return;
         const { data } = await secureFetch(
@@ -486,6 +485,8 @@ watch(
     async () => {
         initializeExercises();
         sessionNote.value = "";
+        completed.value = false;
+        lastWeekData.value = {};
         if (dayName.value !== "REST DAY") {
             await Promise.all([loadLastWeekData(), loadCurrentSession()]);
         }
@@ -495,7 +496,10 @@ watch(
 watch(
     () => props.week,
     () => {
+        initializeExercises();
         sessionNote.value = "";
+        completed.value = false;
+        lastWeekData.value = {};
         if (dayName.value !== "REST DAY") {
             loadLastWeekData();
             loadCurrentSession();
