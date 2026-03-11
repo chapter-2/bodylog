@@ -13,7 +13,8 @@ export default defineNuxtConfig({
         { charset: "utf-8" },
         {
           name: "viewport",
-          content: "width=device-width, initial-scale=1, maximum-scale=1",
+          content:
+            "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
         },
         {
           name: "description",
@@ -26,10 +27,16 @@ export default defineNuxtConfig({
           content:
             "Track workouts, monitor bulk progress, and get AI analysis.",
         },
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        {
+          name: "apple-mobile-web-app-status-bar-style",
+          content: "black-translucent",
+        },
       ],
       link: [
         { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
         { rel: "apple-touch-icon", href: "/favicon.svg" },
+        { rel: "manifest", href: "/manifest.json" },
       ],
     },
   },
