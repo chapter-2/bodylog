@@ -1,6 +1,6 @@
 services:
   bodylog:
-    image: szuryuu/bodylog:v1.0.0
+    image: szuryuu/bodylog:latest
     container_name: bodylog
     restart: unless-stopped
     ports:
