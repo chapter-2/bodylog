@@ -18,7 +18,7 @@
       <button
         type="button"
         @click="togglePosition"
-        class="p-1 hover:bg-slate-700 rounded transition-colors text-slate-400 hidden md:block"
+        class="p-1 hover:bg-slate-700 rounded transition-colors text-slate-400"
       >
         <ArrowDown v-if="timerPosition === 'top'" class="w-4 h-4" />
         <ArrowUp v-else class="w-4 h-4" />
