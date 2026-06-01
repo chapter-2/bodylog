@@ -1,45 +1,25 @@
 import { requireAuth } from "../../utils/auth";
 import { getDb } from "../../utils/db";
 
-export default defineEventHandler((event) => {
-  requireAuth(event);
+export default defineEventHandler(async (event) => {
+  await requireAuth(event);
 
   try {
     const db = getDb();
-
-    const gymSessions = db
-      .prepare(
-        "SELECT week, day, date, time, exercise_name, set1, set2, set3, set4, completed, notes, session_note FROM gym_sessions ORDER BY week ASC, day ASC",
-      )
-      .all();
-
-    const calistSessions = db
-      .prepare(
-        "SELECT week, day, date, time, exercise_name, set1, set2, set3, set4, completed, notes, session_note FROM calist_sessions ORDER BY week ASC, day ASC",
-      )
-      .all();
-
-    let weightEntries = [];
-    try {
-      weightEntries = db
-        .prepare(
-          "SELECT week, date, weight, notes FROM weight_entries ORDER BY week ASC",
-        )
-        .all();
-    } catch {
-      weightEntries = db
-        .prepare(
-          "SELECT week, date, weight, notes FROM bulk_entries ORDER BY week ASC",
-        )
-        .all();
-    }
+    const gymSessions = await db.execute(
+      "SELECT * FROM gym_sessions ORDER BY week ASC",
+    );
+    const calistSessions = await db.execute(
+      "SELECT * FROM calist_sessions ORDER BY week ASC",
+    );
+    const weights = await db.execute(
+      "SELECT * FROM weight_entries ORDER BY week ASC",
+    );
 
     return {
-      exported_at: new Date().toISOString(),
-      version: "1.3",
-      gym_sessions: gymSessions,
-      calist_sessions: calistSessions,
-      weight_entries: weightEntries,
+      gym: gymSessions.rows,
+      calist: calistSessions.rows,
+      weight: weights.rows,
     };
   } catch (error: any) {
     throw createError({ statusCode: 500, message: error.message });

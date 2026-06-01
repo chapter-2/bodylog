@@ -1,7 +1,7 @@
 import type { GymSession } from "~/types";
 
 export default defineEventHandler(async (event) => {
-  requireAuth(event);
+  await requireAuth(event);
 
   try {
     const body = await readBody<GymSession>(event);
@@ -15,30 +15,15 @@ export default defineEventHandler(async (event) => {
 
     const db = getDb();
 
-    const upsert = db.prepare(`
-      INSERT INTO gym_sessions
-        (week, day, date, time, exercise_name, set1, set2, set3, set4, completed, notes, session_note)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(week, day, exercise_name) DO UPDATE SET
-        date         = excluded.date,
-        time         = excluded.time,
-        set1         = excluded.set1,
-        set2         = excluded.set2,
-        set3         = excluded.set3,
-        set4         = excluded.set4,
-        completed    = excluded.completed,
-        notes        = excluded.notes,
-        session_note = excluded.session_note
-    `);
+    const statements = body.exercises.map((exercise) => {
+      const setsData = exercise.sets.map((s) =>
+        s.weight > 0 || s.reps > 0 ? `${s.weight}kg × ${s.reps}` : "-",
+      );
+      while (setsData.length < 4) setsData.push("-");
 
-    const saveAll = db.transaction(() => {
-      for (const exercise of body.exercises) {
-        const setsData = exercise.sets.map((s) =>
-          s.weight > 0 || s.reps > 0 ? `${s.weight}kg × ${s.reps}` : "-",
-        );
-        while (setsData.length < 4) setsData.push("-");
-
-        upsert.run(
+      return {
+        sql: `INSERT INTO gym_sessions (week, day, date, time, exercise_name, set1, set2, set3, set4, completed, notes, session_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(week, day, exercise_name) DO UPDATE SET date = excluded.date, time = excluded.time, set1 = excluded.set1, set2 = excluded.set2, set3 = excluded.set3, set4 = excluded.set4, completed = excluded.completed, notes = excluded.notes, session_note = excluded.session_note`,
+        args: [
           body.week,
           body.day,
           body.date,
@@ -51,15 +36,14 @@ export default defineEventHandler(async (event) => {
           body.completed ? "YES" : "NO",
           exercise.note ?? "",
           body.sessionNote ?? "",
-        );
-      }
+        ],
+      };
     });
 
-    saveAll();
+    await db.batch(statements, "write");
 
     return { success: true, message: "Workout saved successfully" };
   } catch (error: any) {
-    console.error("Failed to save gym session:", error);
     throw createError({
       statusCode: 500,
       message: `Failed to save: ${error.message}`,

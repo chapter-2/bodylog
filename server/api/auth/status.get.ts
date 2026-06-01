@@ -1,10 +1,10 @@
-import { getDb } from "../../utils/db";
+import { getDb, initDb } from "../../utils/db";
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async () => {
+  await initDb();
+
   const db = getDb();
-  const result = db.prepare("SELECT COUNT(*) as count FROM users").get() as any;
+  const result = await db.execute("SELECT COUNT(*) as count FROM users");
 
-  return {
-    isSetup: result.count > 0,
-  };
+  return { isSetup: Number(result.rows[0].count) > 0 };
 });

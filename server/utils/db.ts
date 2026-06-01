@@ -1,43 +1,40 @@
-import Database from "better-sqlite3";
-import { join } from "node:path";
-import { mkdirSync } from "node:fs";
+import { createClient, type Client } from "@libsql/client";
 
-let _db: Database.Database | null = null;
+let _db: Client | null = null;
+let _initialized = false;
 
-export function getDb(): Database.Database {
+export function getDb(): Client {
   if (_db) return _db;
 
-  const dbDir = process.env.DB_PATH ?? join(process.cwd(), "data");
+  const config = useRuntimeConfig();
+  const url = config.tursoDatabaseUrl as string;
+  const authToken = config.tursoAuthToken as string;
 
-  try {
-    mkdirSync(dbDir, { recursive: true });
-  } catch {}
+  if (!url || !authToken) {
+    throw new Error("Missing Turso database credentials");
+  }
 
-  const dbFile = join(dbDir, "bodylog.db");
-  _db = new Database(dbFile);
-  _db.pragma("journal_mode = WAL");
-  _db.pragma("foreign_keys = ON");
-
-  initializeTables(_db);
+  _db = createClient({ url, authToken });
   return _db;
 }
 
-function initializeTables(db: Database.Database): void {
-  db.exec(`
+export async function initDb(): Promise<void> {
+  if (_initialized) return;
+  const db = getDb();
+
+  await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       username      TEXT    NOT NULL UNIQUE,
       password_hash TEXT    NOT NULL,
       created_at    TEXT    DEFAULT CURRENT_TIMESTAMP
     );
-
     CREATE TABLE IF NOT EXISTS sessions (
       token         TEXT    PRIMARY KEY,
       user_id       INTEGER NOT NULL,
       expires_at    INTEGER NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
-
     CREATE TABLE IF NOT EXISTS weight_entries (
       id      INTEGER PRIMARY KEY AUTOINCREMENT,
       week    INTEGER NOT NULL UNIQUE,
@@ -45,7 +42,6 @@ function initializeTables(db: Database.Database): void {
       weight  REAL    NOT NULL,
       notes   TEXT    DEFAULT ''
     );
-
     CREATE TABLE IF NOT EXISTS gym_sessions (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       week          INTEGER NOT NULL,
@@ -62,7 +58,6 @@ function initializeTables(db: Database.Database): void {
       session_note  TEXT    DEFAULT '',
       UNIQUE(week, day, exercise_name)
     );
-
     CREATE TABLE IF NOT EXISTS calist_sessions (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       week          INTEGER NOT NULL,
@@ -79,13 +74,10 @@ function initializeTables(db: Database.Database): void {
       session_note  TEXT    DEFAULT '',
       UNIQUE(week, day, exercise_name)
     );
-
     CREATE TABLE IF NOT EXISTS program_config (
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
-
-    -- NEW: Cardio Sessions Table
     CREATE TABLE IF NOT EXISTS cardio_sessions (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       week          INTEGER NOT NULL,
@@ -97,8 +89,6 @@ function initializeTables(db: Database.Database): void {
       notes         TEXT    DEFAULT '',
       UNIQUE(week, day, type)
     );
-
-    -- NEW: Custom Program Relational Tables (GAP-04)
     CREATE TABLE IF NOT EXISTS custom_programs (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id    INTEGER NOT NULL,
@@ -106,7 +96,6 @@ function initializeTables(db: Database.Database): void {
       created_at TEXT    DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
-
     CREATE TABLE IF NOT EXISTS custom_days (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       program_id INTEGER NOT NULL,
@@ -114,7 +103,6 @@ function initializeTables(db: Database.Database): void {
       sort_order INTEGER NOT NULL,
       FOREIGN KEY(program_id) REFERENCES custom_programs(id) ON DELETE CASCADE
     );
-
     CREATE TABLE IF NOT EXISTS custom_exercises (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       day_id        INTEGER NOT NULL,
@@ -124,4 +112,6 @@ function initializeTables(db: Database.Database): void {
       FOREIGN KEY(day_id) REFERENCES custom_days(id) ON DELETE CASCADE
     );
   `);
+
+  _initialized = true;
 }

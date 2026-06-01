@@ -1,13 +1,15 @@
 import { getDb } from "../../utils/db";
 import { requireAuth } from "../../utils/auth";
 
-export default defineEventHandler((event) => {
-  requireAuth(event);
+export default defineEventHandler(async (event) => {
+  await requireAuth(event);
 
   const db = getDb();
-  const user = db
-    .prepare("SELECT id, username, created_at FROM users WHERE id = ?")
-    .get(event.context.user_id);
+  const result = await db.execute({
+    sql: "SELECT id, username, created_at FROM users WHERE id = ?",
+    args: [event.context.user_id],
+  });
+  const user = result.rows[0];
 
   if (!user) {
     throw createError({ statusCode: 404, message: "User not found" });

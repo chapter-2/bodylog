@@ -11,18 +11,20 @@ export default defineEventHandler(async (event) => {
 
   try {
     const db = getDb();
-
-    const programRow = db
-      .prepare("SELECT value FROM program_config WHERE key = ?")
-      .get(`program_${mode}`) as { value: string } | undefined;
-
-    const startDateRow = db
-      .prepare("SELECT value FROM program_config WHERE key = ?")
-      .get(`start_date_${mode}`) as { value: string } | undefined;
+    const programRow = await db.execute({
+      sql: "SELECT value FROM program_config WHERE key = ?",
+      args: [`program_${mode}`],
+    });
+    const startDateRow = await db.execute({
+      sql: "SELECT value FROM program_config WHERE key = ?",
+      args: [`start_date_${mode}`],
+    });
 
     return {
-      config: programRow ? JSON.parse(programRow.value) : null,
-      start_date: startDateRow ? startDateRow.value : null,
+      config: programRow.rows.length
+        ? JSON.parse(programRow.rows[0].value as string)
+        : null,
+      start_date: startDateRow.rows.length ? startDateRow.rows[0].value : null,
     };
   } catch (error: any) {
     throw createError({ statusCode: 500, message: error.message });

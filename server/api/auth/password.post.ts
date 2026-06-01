@@ -2,7 +2,7 @@ import { getDb } from "../../utils/db";
 import { requireAuth, hashPassword, verifyPassword } from "../../utils/auth";
 
 export default defineEventHandler(async (event) => {
-  requireAuth(event);
+  await requireAuth(event);
   const userId = event.context.user_id;
 
   const body = await readBody(event);
@@ -16,9 +16,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const db = getDb();
-  const user = db
-    .prepare("SELECT password_hash FROM users WHERE id = ?")
-    .get(userId) as any;
+  const result = await db.execute({
+    sql: "SELECT password_hash FROM users WHERE id = ?",
+    args: [userId],
+  });
+  const user = result.rows[0] as any;
 
   if (!user || !verifyPassword(oldPassword, user.password_hash)) {
     throw createError({
@@ -28,10 +30,10 @@ export default defineEventHandler(async (event) => {
   }
 
   const newHash = hashPassword(newPassword);
-  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(
-    newHash,
-    userId,
-  );
+  await db.execute({
+    sql: "UPDATE users SET password_hash = ? WHERE id = ?",
+    args: [newHash, userId],
+  });
 
   return { success: true, message: "Password updated successfully." };
 });

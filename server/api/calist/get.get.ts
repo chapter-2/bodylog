@@ -4,36 +4,19 @@ export default defineEventHandler(async (event) => {
     const query = getQuery(event);
     const day = query.day as string | undefined;
 
-    type SessionRow = {
-      week: number;
-      day: string;
-      date: string;
-      time: string;
-      exercise_name: string;
-      set1: string;
-      set2: string;
-      set3: string;
-      set4: string;
-      completed: string;
-      notes: string;
-      session_note: string;
-    };
-
-    let rows: SessionRow[];
-
+    let result;
     if (day) {
-      rows = db
-        .prepare(
-          "SELECT * FROM calist_sessions WHERE day = ? ORDER BY week ASC",
-        )
-        .all(day) as SessionRow[];
+      result = await db.execute({
+        sql: "SELECT * FROM calist_sessions WHERE day = ? ORDER BY week ASC",
+        args: [day],
+      });
     } else {
-      rows = db
-        .prepare("SELECT * FROM calist_sessions ORDER BY week DESC")
-        .all() as SessionRow[];
+      result = await db.execute(
+        "SELECT * FROM calist_sessions ORDER BY week DESC",
+      );
     }
 
-    const data = rows.map((r) => [
+    const data = result.rows.map((r: any) => [
       r.week.toString(),
       r.day,
       r.date,
@@ -50,7 +33,6 @@ export default defineEventHandler(async (event) => {
 
     return { data };
   } catch (error: any) {
-    console.error("Failed to get calist data:", error);
     throw createError({ statusCode: 500, message: error.message });
   }
 });

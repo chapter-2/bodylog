@@ -5,6 +5,10 @@ export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
   css: ["./app/assets/css/main.css"],
   vite: { plugins: [tailwindcss()] },
+  runtimeConfig: {
+    tursoDatabaseUrl: process.env.TURSO_DATABASE_URL,
+    tursoAuthToken: process.env.TURSO_AUTH_TOKEN,
+  },
 
   app: {
     head: {
