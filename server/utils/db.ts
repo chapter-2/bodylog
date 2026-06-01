@@ -35,6 +35,12 @@ export async function initDb(): Promise<void> {
       expires_at    INTEGER NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS password_resets (
+      token         TEXT    PRIMARY KEY,
+      user_id       INTEGER NOT NULL,
+      expires_at    INTEGER NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS weight_entries (
       id      INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
