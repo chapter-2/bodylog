@@ -4,10 +4,12 @@ const timerSeconds = ref(0);
 const timerActive = ref(false);
 const isRinging = ref(false);
 const showOnWorkoutPage = ref(false);
+const timerPosition = ref<"top" | "bottom">("bottom");
 
 let timerInterval: ReturnType<typeof setInterval> | null = null;
 let ringInterval: ReturnType<typeof setInterval> | null = null;
 let audioCtx: any = null;
+let targetEndTime: number | null = null;
 
 export function useTimer() {
   const formattedTime = computed(() => {
@@ -17,6 +19,28 @@ export function useTimer() {
     const s = (timerSeconds.value % 60).toString().padStart(2, "0");
     return `${m}:${s}`;
   });
+
+  function requestNotificationPermission() {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+  }
+
+  function showNotification() {
+    if (
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "granted"
+    ) {
+      new Notification("Waktu Istirahat Selesai!", {
+        body: "Kembali bekerja. Jangan terlalu lama istirahat.",
+        icon: "/favicon.svg",
+        requireInteraction: true,
+      });
+    }
+  }
 
   function initAudio() {
     if (!audioCtx && typeof window !== "undefined") {
@@ -55,6 +79,7 @@ export function useTimer() {
   function triggerAlarm() {
     isRinging.value = true;
     playAlarmBeep();
+    showNotification();
     if (typeof navigator !== "undefined" && "vibrate" in navigator)
       navigator.vibrate([200, 100, 200]);
 
@@ -68,6 +93,7 @@ export function useTimer() {
   function stopAlarm() {
     isRinging.value = false;
     timerSeconds.value = 0;
+    targetEndTime = null;
     if (ringInterval) {
       clearInterval(ringInterval);
       ringInterval = null;
@@ -75,29 +101,47 @@ export function useTimer() {
   }
 
   function addTime(secs: number) {
-    timerSeconds.value += secs;
+    if (timerActive.value && targetEndTime) {
+      targetEndTime += secs * 1000;
+      timerSeconds.value = Math.max(
+        0,
+        Math.ceil((targetEndTime - Date.now()) / 1000),
+      );
+    } else {
+      timerSeconds.value += secs;
+    }
   }
 
   function toggleTimer() {
     initAudio();
+    requestNotificationPermission();
+
     if (timerActive.value) {
       if (timerInterval) clearInterval(timerInterval);
       timerActive.value = false;
+      targetEndTime = null;
     } else {
       if (timerSeconds.value === 0) timerSeconds.value = 90;
       timerActive.value = true;
 
+      targetEndTime = Date.now() + timerSeconds.value * 1000;
+
       if (timerInterval) clearInterval(timerInterval);
 
       timerInterval = setInterval(() => {
-        if (timerSeconds.value > 0) {
-          timerSeconds.value--;
+        if (!targetEndTime) return;
+        const remaining = Math.ceil((targetEndTime - Date.now()) / 1000);
+
+        if (remaining > 0) {
+          timerSeconds.value = remaining;
         } else {
+          timerSeconds.value = 0;
           if (timerInterval) clearInterval(timerInterval);
           timerActive.value = false;
+          targetEndTime = null;
           triggerAlarm();
         }
-      }, 1000);
+      }, 250);
     }
   }
 
@@ -105,7 +149,12 @@ export function useTimer() {
     if (timerInterval) clearInterval(timerInterval);
     timerActive.value = false;
     timerSeconds.value = 0;
+    targetEndTime = null;
     stopAlarm();
+  }
+
+  function togglePosition() {
+    timerPosition.value = timerPosition.value === "top" ? "bottom" : "top";
   }
 
   return {
@@ -114,9 +163,11 @@ export function useTimer() {
     isRinging,
     showOnWorkoutPage,
     formattedTime,
+    timerPosition,
     addTime,
     toggleTimer,
     resetTimer,
     stopAlarm,
+    togglePosition,
   };
 }
