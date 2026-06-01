@@ -1,19 +1,23 @@
 export default defineEventHandler(async (event) => {
+  await requireAuth(event);
+
   try {
     const db = getDb();
     const query = getQuery(event);
     const day = query.day as string | undefined;
+    const userId = event.context.user_id;
 
     let result;
     if (day) {
       result = await db.execute({
-        sql: "SELECT * FROM gym_sessions WHERE day = ? ORDER BY week ASC",
-        args: [day],
+        sql: "SELECT * FROM gym_sessions WHERE user_id = ? AND day = ? ORDER BY week ASC",
+        args: [userId, day],
       });
     } else {
-      result = await db.execute(
-        "SELECT * FROM gym_sessions ORDER BY week DESC",
-      );
+      result = await db.execute({
+        sql: "SELECT * FROM gym_sessions WHERE user_id = ? ORDER BY week DESC",
+        args: [userId],
+      });
     }
 
     const data = result.rows.map((r: any) => [

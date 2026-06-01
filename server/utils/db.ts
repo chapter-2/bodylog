@@ -37,13 +37,17 @@ export async function initDb(): Promise<void> {
     );
     CREATE TABLE IF NOT EXISTS weight_entries (
       id      INTEGER PRIMARY KEY AUTOINCREMENT,
-      week    INTEGER NOT NULL UNIQUE,
+      user_id INTEGER NOT NULL,
+      week    INTEGER NOT NULL,
       date    TEXT    NOT NULL,
       weight  REAL    NOT NULL,
-      notes   TEXT    DEFAULT ''
+      notes   TEXT    DEFAULT '',
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, week)
     );
     CREATE TABLE IF NOT EXISTS gym_sessions (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id       INTEGER NOT NULL,
       week          INTEGER NOT NULL,
       day           TEXT    NOT NULL,
       date          TEXT    NOT NULL,
@@ -56,10 +60,12 @@ export async function initDb(): Promise<void> {
       completed     TEXT    DEFAULT 'NO',
       notes         TEXT    DEFAULT '',
       session_note  TEXT    DEFAULT '',
-      UNIQUE(week, day, exercise_name)
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, week, day, exercise_name)
     );
     CREATE TABLE IF NOT EXISTS calist_sessions (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id       INTEGER NOT NULL,
       week          INTEGER NOT NULL,
       day           TEXT    NOT NULL,
       date          TEXT    NOT NULL,
@@ -72,14 +78,19 @@ export async function initDb(): Promise<void> {
       completed     TEXT    DEFAULT 'NO',
       notes         TEXT    DEFAULT '',
       session_note  TEXT    DEFAULT '',
-      UNIQUE(week, day, exercise_name)
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, week, day, exercise_name)
     );
     CREATE TABLE IF NOT EXISTS program_config (
-      key   TEXT PRIMARY KEY,
-      value TEXT NOT NULL
+      user_id INTEGER NOT NULL,
+      key     TEXT    NOT NULL,
+      value   TEXT    NOT NULL,
+      PRIMARY KEY (user_id, key),
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
     CREATE TABLE IF NOT EXISTS cardio_sessions (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id       INTEGER NOT NULL,
       week          INTEGER NOT NULL,
       day           TEXT    NOT NULL,
       date          TEXT    NOT NULL,
@@ -87,7 +98,8 @@ export async function initDb(): Promise<void> {
       duration_min  INTEGER DEFAULT 0,
       distance_km   REAL    DEFAULT 0,
       notes         TEXT    DEFAULT '',
-      UNIQUE(week, day, type)
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, week, day, type)
     );
     CREATE TABLE IF NOT EXISTS custom_programs (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,

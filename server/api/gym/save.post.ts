@@ -5,6 +5,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     const body = await readBody<GymSession>(event);
+    const userId = event.context.user_id;
 
     if (!body || !Array.isArray(body.exercises)) {
       throw createError({
@@ -22,8 +23,9 @@ export default defineEventHandler(async (event) => {
       while (setsData.length < 4) setsData.push("-");
 
       return {
-        sql: `INSERT INTO gym_sessions (week, day, date, time, exercise_name, set1, set2, set3, set4, completed, notes, session_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(week, day, exercise_name) DO UPDATE SET date = excluded.date, time = excluded.time, set1 = excluded.set1, set2 = excluded.set2, set3 = excluded.set3, set4 = excluded.set4, completed = excluded.completed, notes = excluded.notes, session_note = excluded.session_note`,
+        sql: `INSERT INTO gym_sessions (user_id, week, day, date, time, exercise_name, set1, set2, set3, set4, completed, notes, session_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, week, day, exercise_name) DO UPDATE SET date = excluded.date, time = excluded.time, set1 = excluded.set1, set2 = excluded.set2, set3 = excluded.set3, set4 = excluded.set4, completed = excluded.completed, notes = excluded.notes, session_note = excluded.session_note`,
         args: [
+          userId,
           body.week,
           body.day,
           body.date,
