@@ -1,17 +1,14 @@
 export default defineEventHandler(async () => {
   try {
     const db = getDb();
-
-    const rows = db
-      .prepare(
-        "SELECT week, date, weight, notes FROM weight_entries ORDER BY week ASC",
-      )
-      .all() as { week: number; date: string; weight: number; notes: string }[];
+    const result = await db.execute(
+      "SELECT week, date, weight, notes FROM weight_entries ORDER BY week ASC",
+    );
 
     const header = ["Week", "Date", "Weight (kg)", "Notes"];
     const data = [
       header,
-      ...rows.map((r) => [
+      ...result.rows.map((r: any) => [
         r.week.toString(),
         r.date,
         r.weight.toString(),

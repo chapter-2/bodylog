@@ -1,54 +1,54 @@
 <template>
-    <div class="inner border-x border-separator bg-white min-h-[60vh]">
-        <WorkoutHeader
-            :day-name="dayName"
-            :day-focus="dayFocus"
-            :last-saved="lastSaved"
-            :is-authenticated="isAuthenticated"
-            :has-exercises="exercises.length > 0"
-            @open-rules="showRules = true"
-            @edit-program="handleEditClick"
-        />
+  <div class="inner border-x border-separator bg-white min-h-[60vh]">
+    <WorkoutHeader
+      :day-name="dayName"
+      :day-focus="dayFocus"
+      :last-saved="lastSaved"
+      :is-authenticated="isAuthenticated"
+      :has-exercises="exercises.length > 0"
+      @open-rules="showRules = true"
+      @edit-program="handleEditClick"
+    />
 
-        <RestDayState v-if="exercises.length === 0" />
+    <RestDayState v-if="exercises.length === 0" />
 
-        <form
-            v-else
-            @submit.prevent="saveWorkout"
-            class="divide-y divide-separator"
-        >
-            <SessionNotes v-model="sessionNote" />
-            <ExerciseCard
-                v-for="(exercise, exIdx) in exercises"
-                :key="exIdx"
-                v-model="exercises[exIdx]"
-                mode="calist"
-                :week="week"
-                :last-week-data="lastWeekData[exIdx]"
-            />
-            <ProgressiveTip mode="calist" />
-            <SaveFooter
-                v-model:completed="completed"
-                :saving="saving"
-                :save-error="saveError"
-            />
-        </form>
+    <form
+      v-else
+      @submit.prevent="saveWorkout"
+      class="divide-y divide-separator"
+    >
+      <SessionNotes v-model="sessionNote" />
+      <ExerciseCard
+        v-for="(exercise, exIdx) in exercises"
+        :key="exIdx"
+        v-model="exercises[exIdx]"
+        mode="calist"
+        :week="week"
+        :last-week-data="lastWeekData[exIdx]"
+      />
+      <ProgressiveTip mode="calist" />
+      <SaveFooter
+        v-model:completed="completed"
+        :saving="saving"
+        :save-error="saveError"
+      />
+    </form>
 
-        <LoggingRulesModal
-            :show="showRules"
-            mode="calist"
-            @close="showRules = false"
-        />
+    <LoggingRulesModal
+      :show="showRules"
+      mode="calist"
+      @close="showRules = false"
+    />
 
-        <ProgramEditorSidebar
-            :open="showProgramEditor"
-            mode="calist"
-            :day="props.day"
-            :exercises="sidebarExercises"
-            @close="showProgramEditor = false"
-            @saved="onProgramSaved"
-        />
-    </div>
+    <ProgramEditorSidebar
+      :open="showProgramEditor"
+      mode="calist"
+      :day="props.day"
+      :exercises="sidebarExercises"
+      @close="showProgramEditor = false"
+      @saved="onProgramSaved"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -64,41 +64,41 @@ import LoggingRulesModal from "~/components/workout/LoggingRulesModal.vue";
 import { useTimer } from "~/composables/useTimer";
 
 interface UISet {
-    value: number | null;
+  value: number | null;
 }
 
 interface SubOption {
-    label: string;
-    value: string;
+  label: string;
+  value: string;
 }
 
 interface UIExercise {
-    name: string;
-    type: "reps" | "hold";
-    sets: UISet[];
-    subs?: SubOption[];
-    selectedSub?: string;
-    note?: string;
-    showNote?: boolean;
-    targetReps?: number;
+  name: string;
+  type: "reps" | "hold";
+  sets: UISet[];
+  subs?: SubOption[];
+  selectedSub?: string;
+  note?: string;
+  showNote?: boolean;
+  targetReps?: number;
 }
 
 interface SidebarExercise {
-    id: string;
-    name: string;
-    sets: number;
-    targetReps: number;
-    equipment: string[];
-    type: "reps" | "hold";
+  id: string;
+  name: string;
+  sets: number;
+  targetReps: number;
+  equipment: string[];
+  type: "reps" | "hold";
 }
 
 interface ExerciseDef {
-    name: string;
-    type: "reps" | "hold";
-    setCount: number;
-    targetReps?: number;
-    subs?: SubOption[];
-    equipment?: string[];
+  name: string;
+  type: "reps" | "hold";
+  setCount: number;
+  targetReps?: number;
+  subs?: SubOption[];
+  equipment?: string[];
 }
 
 const props = defineProps<{ week: number; day: string }>();
@@ -118,399 +118,483 @@ const showRules = ref(false);
 const showProgramEditor = ref(false);
 const sidebarExercises = ref<SidebarExercise[]>([]);
 const customProgram = ref<Record<
-    string,
-    { exercises?: any[]; name?: string; focus?: string; isRest?: boolean }
+  string,
+  { exercises?: any[]; name?: string; focus?: string; isRest?: boolean }
 > | null>(null);
+const isLoadingData = ref(true);
 
 let currentFetchId = 0;
 
-const effectiveTemplates = computed(() => {
-    const result: Record<string, any> = {};
-    for (const day of ALL_DAYS) {
-        const def = calistProgramDefaults[day] || {
-            name: "REST DAY",
-            focus: "Recover",
-            exercises: [],
-            isRest: true,
-        };
-        const custom = customProgram.value?.[day];
-        const isRest =
-            custom?.isRest !== undefined ? custom.isRest : def.isRest;
+const draftKey = computed(
+  () => `bodylog_draft_calist_${props.week}_${props.day}`,
+);
 
-        if (isRest) {
-            result[day] = { name: "REST DAY", focus: "Recover", exercises: [] };
-        } else if (custom) {
-            result[day] = {
-                name: custom.name || def.name,
-                focus: custom.focus || def.focus,
-                exercises:
-                    custom.exercises && custom.exercises.length > 0
-                        ? custom.exercises.map((customEx: any, idx: number) => {
-                              const fallbackDef = def.exercises?.[idx];
-                              return {
-                                  ...fallbackDef,
-                                  name:
-                                      customEx.name || fallbackDef?.name || "",
-                                  type:
-                                      customEx.type ||
-                                      fallbackDef?.type ||
-                                      "reps",
-                                  setCount:
-                                      customEx.setCount ??
-                                      customEx.sets ??
-                                      fallbackDef?.setCount ??
-                                      3,
-                                  targetReps:
-                                      customEx.targetReps ??
-                                      fallbackDef?.targetReps ??
-                                      10,
-                                  subs:
-                                      customEx.equipment?.length > 0
-                                          ? customEx.equipment.map(
-                                                (eq: string) => ({
-                                                    label: eq,
-                                                    value: eq,
-                                                }),
-                                            )
-                                          : fallbackDef?.subs,
-                                  equipment:
-                                      customEx.equipment ??
-                                      fallbackDef?.equipment ??
-                                      [],
-                              };
-                          })
-                        : def.exercises || [],
-            };
-        } else {
-            result[day] = def;
-        }
+const effectiveTemplates = computed(() => {
+  const result: Record<string, any> = {};
+  const ALL_DAYS = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ];
+  for (const day of ALL_DAYS) {
+    const def = calistProgramDefaults[day] || {
+      name: "REST DAY",
+      focus: "Recover",
+      exercises: [],
+      isRest: true,
+    };
+    const custom = customProgram.value?.[day];
+    const isRest = custom?.isRest !== undefined ? custom.isRest : def.isRest;
+
+    if (isRest) {
+      result[day] = { name: "REST DAY", focus: "Recover", exercises: [] };
+    } else if (custom) {
+      result[day] = {
+        name: custom.name || def.name,
+        focus: custom.focus || def.focus,
+        exercises:
+          custom.exercises && custom.exercises.length > 0
+            ? custom.exercises.map((customEx: any, idx: number) => {
+                const fallbackDef = def.exercises?.[idx];
+                return {
+                  ...fallbackDef,
+                  name: customEx.name || fallbackDef?.name || "",
+                  type: customEx.type || fallbackDef?.type || "reps",
+                  setCount:
+                    customEx.setCount ??
+                    customEx.sets ??
+                    fallbackDef?.setCount ??
+                    3,
+                  targetReps:
+                    customEx.targetReps ?? fallbackDef?.targetReps ?? 10,
+                  subs:
+                    customEx.equipment?.length > 0
+                      ? customEx.equipment.map((eq: string) => ({
+                          label: eq,
+                          value: eq,
+                        }))
+                      : fallbackDef?.subs,
+                  equipment: customEx.equipment ?? fallbackDef?.equipment ?? [],
+                };
+              })
+            : def.exercises || [],
+      };
+    } else {
+      result[day] = def;
     }
-    return result;
+  }
+  return result;
 });
 
 const dayName = computed(
-    () => effectiveTemplates.value[props.day]?.name || "REST DAY",
+  () => effectiveTemplates.value[props.day]?.name || "REST DAY",
 );
 const dayFocus = computed(
-    () => effectiveTemplates.value[props.day]?.focus || "Recover",
+  () => effectiveTemplates.value[props.day]?.focus || "Recover",
 );
 
 function triggerCelebration() {
-    const duration = 3000;
-    const animationEnd = Date.now() + duration;
-    const defaults = {
-        startVelocity: 30,
-        spread: 360,
-        ticks: 60,
-        zIndex: 99999,
-    };
+  const duration = 3000;
+  const animationEnd = Date.now() + duration;
+  const defaults = {
+    startVelocity: 30,
+    spread: 360,
+    ticks: 60,
+    zIndex: 99999,
+  };
 
-    function randomInRange(min: number, max: number) {
-        return Math.random() * (max - min) + min;
-    }
+  function randomInRange(min: number, max: number) {
+    return Math.random() * (max - min) + min;
+  }
 
-    const interval: any = setInterval(function () {
-        const timeLeft = animationEnd - Date.now();
-        if (timeLeft <= 0) return clearInterval(interval);
+  const interval: any = setInterval(function () {
+    const timeLeft = animationEnd - Date.now();
+    if (timeLeft <= 0) return clearInterval(interval);
 
-        const particleCount = 50 * (timeLeft / duration);
-        confetti({
-            ...defaults,
-            particleCount,
-            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-        });
-        confetti({
-            ...defaults,
-            particleCount,
-            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-        });
-    }, 250);
+    const particleCount = 50 * (timeLeft / duration);
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+    });
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+    });
+  }, 250);
 }
 
 function handleEditClick() {
-    if (!isAuthenticated.value) {
-        alert(
-            "PREVIEW MODE: Silakan login untuk mengkustomisasi program dan alat.",
-        );
-        navigateTo("/login");
-        return;
-    }
-    openProgramEditor();
+  if (!isAuthenticated.value) {
+    alert(
+      "PREVIEW MODE: Silakan login untuk mengkustomisasi program dan alat.",
+    );
+    navigateTo("/login");
+    return;
+  }
+  openProgramEditor();
 }
 
 function openProgramEditor() {
-    const template = effectiveTemplates.value[props.day];
-    if (!template) return;
+  const template = effectiveTemplates.value[props.day];
+  if (!template) return;
 
-    sidebarExercises.value = template.exercises.map(
-        (def: any, idx: number) => ({
-            id: `ex-calist-${props.day}-${idx}`,
-            name: def.name,
-            sets: def.setCount,
-            targetReps: def.targetReps ?? 10,
-            equipment:
-                def.equipment ??
-                (def.subs ? def.subs.map((s: any) => s.label) : []),
-            type: def.type,
-        }),
-    );
-    showProgramEditor.value = true;
+  sidebarExercises.value = template.exercises.map((def: any, idx: number) => ({
+    id: `ex-calist-${props.day}-${idx}`,
+    name: def.name,
+    sets: def.setCount,
+    targetReps: def.targetReps ?? 10,
+    equipment:
+      def.equipment ?? (def.subs ? def.subs.map((s: any) => s.label) : []),
+    type: def.type,
+  }));
+  showProgramEditor.value = true;
 }
 
 function onProgramSaved(updatedExercises: SidebarExercise[]) {
-    if (!customProgram.value) customProgram.value = {};
-    customProgram.value[props.day] = {
-        ...customProgram.value[props.day],
-        exercises: updatedExercises.map((ex) => ({
-            name: ex.name,
-            setCount: ex.sets,
-            targetReps: ex.targetReps,
-            equipment: ex.equipment,
-            type: ex.type,
-        })),
+  if (!customProgram.value) customProgram.value = {};
+  customProgram.value[props.day] = {
+    ...customProgram.value[props.day],
+    exercises: updatedExercises.map((ex) => ({
+      name: ex.name,
+      setCount: ex.sets,
+      targetReps: ex.targetReps,
+      equipment: ex.equipment,
+      type: ex.type,
+    })),
+  };
+
+  const existingMap = new Map(exercises.value.map((e) => [e.name, e]));
+  exercises.value = updatedExercises.map((ex) => {
+    const templateDef = effectiveTemplates.value[props.day]?.exercises?.find(
+      (def: any) => def.name === ex.name,
+    );
+    const existing = existingMap.get(ex.name);
+
+    let subs = undefined;
+    if (ex.equipment && ex.equipment.length > 0) {
+      subs = ex.equipment.map((eq: string) => ({ label: eq, value: eq }));
+    } else if (templateDef && templateDef.subs) {
+      subs = templateDef.subs;
+    }
+
+    const sets = Array(ex.sets)
+      .fill(null)
+      .map((_, i) => {
+        if (existing && existing.sets[i]) {
+          return { value: existing.sets[i].value };
+        }
+        return { value: null };
+      });
+
+    return {
+      name: ex.name,
+      type: ex.type,
+      sets: sets,
+      subs: subs,
+      selectedSub: existing?.selectedSub || (subs ? subs[0].value : undefined),
+      note: existing?.note || "",
+      showNote: existing?.showNote || false,
+      targetReps: ex.targetReps,
     };
-    initializeExercises();
-    showProgramEditor.value = false;
+  });
+
+  showProgramEditor.value = false;
 }
 
 function effectiveName(ex: UIExercise): string {
-    return ex.selectedSub || ex.name;
+  return ex.selectedSub || ex.name;
 }
 
 function allPossibleNames(ex: UIExercise | ExerciseDef): string[] {
-    const base = ex.name;
-    const subs = (ex as any).subs as SubOption[] | undefined;
-    if (!subs) return [base];
-    return [base, ...subs.map((s: SubOption) => s.value)];
+  const base = ex.name;
+  const subs = (ex as any).subs as SubOption[] | undefined;
+  if (!subs) return [base];
+  return [base, ...subs.map((s: SubOption) => s.value)];
 }
 
 function formatSetValue(ex: UIExercise, val: number | null): string {
-    if (val === null || val <= 0) return "-";
-    return ex.type === "hold" ? `${val}s` : `${val} reps`;
+  if (val === null || val <= 0) return "-";
+  return ex.type === "hold" ? `${val}s` : `${val} reps`;
 }
 
 function parseSetValue(stored: string): number | null {
-    if (!stored || stored === "-") return null;
-    return parseInt(stored) || null;
+  if (!stored || stored === "-") return null;
+  const parsedVal = parseFloat(stored.replace(/[a-zA-Z]/g, "").trim());
+  return isNaN(parsedVal) ? null : parsedVal;
 }
 
 function initializeExercises() {
-    const template = effectiveTemplates.value[props.day];
-    if (!template) {
-        exercises.value = [];
-        return;
-    }
-    exercises.value = template.exercises.map((def: any) => ({
-        name: def.name,
-        type: def.type,
-        sets: Array(def.setCount)
-            .fill(null)
-            .map(() => ({ value: null })),
-        subs: def.subs,
-        selectedSub: def.subs ? def.subs[0].value : undefined,
-        note: "",
-        showNote: false,
-        targetReps: def.targetReps,
-    }));
+  const template = effectiveTemplates.value[props.day];
+  if (!template) {
+    exercises.value = [];
+    return;
+  }
+  exercises.value = template.exercises.map((def: any) => ({
+    name: def.name,
+    type: def.type,
+    sets: Array(def.setCount)
+      .fill(null)
+      .map(() => ({ value: null })),
+    subs: def.subs,
+    selectedSub: def.subs ? def.subs[0].value : undefined,
+    note: "",
+    showNote: false,
+    targetReps: def.targetReps,
+  }));
+}
+
+function loadLocalDraft(): boolean {
+  const saved = localStorage.getItem(draftKey.value);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed.exercises && parsed.exercises.length > 0) {
+        exercises.value = parsed.exercises;
+        sessionNote.value = parsed.sessionNote || "";
+        return true;
+      }
+    } catch (e) {}
+  }
+  return false;
 }
 
 async function loadLastWeekData() {
-    if (props.week <= 1) return;
-    try {
-        if (dayName.value === "REST DAY") return;
-        const { data } = await secureFetch(
-            `/api/calist/get?day=${dayName.value}`,
-        );
-        const lastWeekRows = (data as any[]).filter(
-            (row: any) => parseInt(row[0]) === props.week - 1,
-        );
+  if (props.week <= 1) return;
+  try {
+    if (dayName.value === "REST DAY") return;
+    const { data } = await secureFetch(`/api/calist/get?day=${dayName.value}`);
+    const lastWeekRows = (data as any[]).filter(
+      (row: any) => parseInt(row[0]) === props.week - 1,
+    );
 
-        if (lastWeekRows.length > 0) {
-            const template = effectiveTemplates.value[props.day];
-            const dataMap: Record<number, { sets: string[]; name: string }> =
-                {};
+    if (lastWeekRows.length > 0) {
+      const template = effectiveTemplates.value[props.day];
+      const dataMap: Record<number, { sets: string[]; name: string }> = {};
 
-            template?.exercises.forEach((def: any, idx: number) => {
-                const possibleNames = allPossibleNames(def);
-                let exerciseRow: any = null;
-                for (const n of possibleNames) {
-                    exerciseRow = lastWeekRows.find((row: any) => row[4] === n);
-                    if (exerciseRow) break;
-                }
-                if (exerciseRow) {
-                    const sets = [
-                        exerciseRow[5],
-                        exerciseRow[6],
-                        exerciseRow[7],
-                        exerciseRow[8],
-                    ].filter((s: any) => s && s !== "-" && s !== undefined);
-                    dataMap[idx] = { sets, name: exerciseRow[4] };
-                }
-            });
-            lastWeekData.value = dataMap;
+      template?.exercises.forEach((def: any, idx: number) => {
+        const possibleNames = allPossibleNames(def);
+        let exerciseRow: any = null;
+        for (const n of possibleNames) {
+          exerciseRow = lastWeekRows.find((row: any) => row[4] === n);
+          if (exerciseRow) break;
         }
-    } catch (error) {}
+        if (exerciseRow) {
+          const sets = [
+            exerciseRow[5],
+            exerciseRow[6],
+            exerciseRow[7],
+            exerciseRow[8],
+          ].filter((s: any) => s && s !== "-" && s !== undefined);
+          dataMap[idx] = { sets, name: exerciseRow[4] };
+        }
+      });
+      lastWeekData.value = dataMap;
+    }
+  } catch (error) {}
 }
 
 async function loadCurrentSession() {
-    try {
-        if (dayName.value === "REST DAY") return;
-        const { data } = await secureFetch(
-            `/api/calist/get?day=${dayName.value}`,
-        );
-        const currentRows = (data as any[]).filter(
-            (row: any) => parseInt(row[0]) === props.week,
-        );
+  try {
+    if (dayName.value === "REST DAY") return;
+    const { data } = await secureFetch(`/api/calist/get?day=${dayName.value}`);
+    const currentRows = (data as any[]).filter(
+      (row: any) => parseInt(row[0]) === props.week,
+    );
 
-        if (currentRows.length > 0) {
-            const firstRow = currentRows[0];
-            if (firstRow[11]) sessionNote.value = firstRow[11];
+    if (currentRows.length > 0) {
+      const firstRow = currentRows[0];
+      if (firstRow[11]) sessionNote.value = firstRow[11];
 
-            exercises.value.forEach((exercise) => {
-                const possibleNames = allPossibleNames(exercise);
-                let savedRow: any = null;
-                for (const n of possibleNames) {
-                    savedRow = currentRows.find((row: any) => row[4] === n);
-                    if (savedRow) break;
-                }
-                if (savedRow) {
-                    if (exercise.subs) {
-                        const matchedSub = exercise.subs.find(
-                            (s) => s.value === savedRow[4],
-                        );
-                        if (matchedSub) exercise.selectedSub = matchedSub.value;
-                    }
-                    exercise.sets.forEach(
-                        (set, idx) =>
-                            (set.value = parseSetValue(savedRow[5 + idx])),
-                    );
-                    if (savedRow[10]) exercise.note = savedRow[10];
-                }
-            });
-            if (currentRows[0][9] === "YES") completed.value = true;
+      exercises.value.forEach((exercise) => {
+        const possibleNames = allPossibleNames(exercise);
+        let savedRow: any = null;
+        for (const n of possibleNames) {
+          savedRow = currentRows.find((row: any) => row[4] === n);
+          if (savedRow) break;
         }
-    } catch (error) {}
+        if (savedRow) {
+          if (exercise.subs) {
+            const matchedSub = exercise.subs.find(
+              (s) => s.value === savedRow[4],
+            );
+            if (matchedSub) exercise.selectedSub = matchedSub.value;
+          }
+          exercise.sets.forEach(
+            (set, idx) => (set.value = parseSetValue(savedRow[5 + idx])),
+          );
+          if (savedRow[10]) exercise.note = savedRow[10];
+        }
+      });
+      if (currentRows[0][9] === "YES") completed.value = true;
+    }
+  } catch (error) {}
 }
 
 async function saveWorkout() {
-    if (dayName.value === "REST DAY") return;
-    if (!isAuthenticated.value) {
-        navigateTo("/login");
-        return;
+  if (dayName.value === "REST DAY") return;
+  if (!isAuthenticated.value) {
+    navigateTo("/login");
+    return;
+  }
+
+  if (saving.value) return;
+
+  saving.value = true;
+  saveError.value = "";
+
+  try {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("id-ID");
+    const timeStr = now.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const exercisePayload = exercises.value.map((ex) => ({
+      name: effectiveName(ex),
+      sets: ex.sets.map((s) => formatSetValue(ex, s.value)),
+      note: ex.note || "",
+    }));
+
+    await secureFetch("/api/calist/save", {
+      method: "POST",
+      body: {
+        week: props.week,
+        day: dayName.value,
+        date: dateStr,
+        time: timeStr,
+        exercises: exercisePayload,
+        completed: completed.value,
+        sessionNote: sessionNote.value || "",
+      },
+    });
+
+    localStorage.removeItem(draftKey.value);
+    lastSaved.value = `${dateStr} ${timeStr}`;
+    emit("saved");
+
+    if (completed.value) triggerCelebration();
+    completed.value = false;
+  } catch (error: any) {
+    if (error.statusCode === 401) {
+      saveError.value = "Session expired. Please login again.";
+      setTimeout(() => navigateTo("/login"), 2000);
+    } else {
+      saveError.value = error.message || "Failed to save.";
     }
-
-    if (saving.value) return;
-
-    saving.value = true;
-    saveError.value = "";
-
-    try {
-        const now = new Date();
-        const dateStr = now.toLocaleDateString("id-ID");
-        const timeStr = now.toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-
-        const exercisePayload = exercises.value.map((ex) => ({
-            name: effectiveName(ex),
-            sets: ex.sets.map((s) => formatSetValue(ex, s.value)),
-            note: ex.note || "",
-        }));
-
-        await secureFetch("/api/calist/save", {
-            method: "POST",
-            body: {
-                week: props.week,
-                day: dayName.value,
-                date: dateStr,
-                time: timeStr,
-                exercises: exercisePayload,
-                completed: completed.value,
-                sessionNote: sessionNote.value || "",
-            },
-        });
-
-        lastSaved.value = `${dateStr} ${timeStr}`;
-        emit("saved");
-
-        if (completed.value) triggerCelebration();
-        completed.value = false;
-    } catch (error: any) {
-        if (error.statusCode === 401) {
-            saveError.value = "Session expired. Please login again.";
-            setTimeout(() => navigateTo("/login"), 2000);
-        } else {
-            saveError.value = error.message || "Failed to save.";
-        }
-    } finally {
-        saving.value = false;
-    }
+  } finally {
+    saving.value = false;
+  }
 }
 
+watch(
+  [exercises, sessionNote],
+  () => {
+    if (isLoadingData.value || dayName.value === "REST DAY") return;
+    localStorage.setItem(
+      draftKey.value,
+      JSON.stringify({
+        exercises: exercises.value,
+        sessionNote: sessionNote.value,
+      }),
+    );
+  },
+  { deep: true },
+);
+
 onMounted(async () => {
-    try {
-        const res = (await secureFetch("/api/program/get?mode=calist")) as {
-            config: any;
-            start_date: string | null;
-        };
-        if (res.config) customProgram.value = res.config;
-    } catch {}
+  isLoadingData.value = true;
+  try {
+    const res = (await secureFetch("/api/program/get?mode=calist")) as {
+      config: any;
+      start_date: string | null;
+    };
+    if (res.config) customProgram.value = res.config;
+  } catch {}
 
-    initializeExercises();
+  initializeExercises();
 
-    if (dayName.value !== "REST DAY") {
-        await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+  if (dayName.value !== "REST DAY") {
+    const hasDraft = loadLocalDraft();
+    if (!hasDraft) {
+      await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+    } else {
+      await loadLastWeekData();
     }
+  }
 
-    if (route.query.tour === "editor") {
-        setTimeout(() => openProgramEditor(), 500);
-    }
+  isLoadingData.value = false;
+
+  if (route.query.tour === "editor") {
+    setTimeout(() => openProgramEditor(), 500);
+  }
 });
 
 watchEffect(() => {
-    showOnWorkoutPage.value = exercises.value.length > 0;
+  showOnWorkoutPage.value = exercises.value.length > 0;
 });
 
 onUnmounted(() => {
-    showOnWorkoutPage.value = false;
+  showOnWorkoutPage.value = false;
 });
 
 watch(
-    () => props.day,
-    async () => {
-        const fetchId = ++currentFetchId;
-        initializeExercises();
-        sessionNote.value = "";
-        completed.value = false;
-        lastWeekData.value = {};
-        if (dayName.value !== "REST DAY") {
-            await Promise.all([loadLastWeekData(), loadCurrentSession()]);
-            if (fetchId !== currentFetchId) return;
-        }
-    },
+  () => props.day,
+  async () => {
+    const fetchId = ++currentFetchId;
+    isLoadingData.value = true;
+    initializeExercises();
+    sessionNote.value = "";
+    completed.value = false;
+    lastWeekData.value = {};
+    if (dayName.value !== "REST DAY") {
+      const hasDraft = loadLocalDraft();
+      if (!hasDraft) {
+        await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+      } else {
+        await loadLocalDraft();
+        await loadLastWeekData();
+      }
+      if (fetchId !== currentFetchId) return;
+    }
+    isLoadingData.value = false;
+  },
 );
 
 watch(
-    () => props.week,
-    async () => {
-        const fetchId = ++currentFetchId;
-        initializeExercises();
-        sessionNote.value = "";
-        completed.value = false;
-        lastWeekData.value = {};
-        if (dayName.value !== "REST DAY") {
-            await Promise.all([loadLastWeekData(), loadCurrentSession()]);
-            if (fetchId !== currentFetchId) return;
-        }
-    },
+  () => props.week,
+  async () => {
+    const fetchId = ++currentFetchId;
+    isLoadingData.value = true;
+    initializeExercises();
+    sessionNote.value = "";
+    completed.value = false;
+    lastWeekData.value = {};
+    if (dayName.value !== "REST DAY") {
+      const hasDraft = loadLocalDraft();
+      if (!hasDraft) {
+        await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+      } else {
+        await loadLocalDraft();
+        await loadLastWeekData();
+      }
+      if (fetchId !== currentFetchId) return;
+    }
+    isLoadingData.value = false;
+  },
 );
 
 watch(
-    () => route.query.tour,
-    (newVal) => {
-        if (newVal === "step5") setTimeout(() => openProgramEditor(), 100);
-    },
-    { immediate: true },
+  () => route.query.tour,
+  (newVal) => {
+    if (newVal === "step5") setTimeout(() => openProgramEditor(), 100);
+  },
+  { immediate: true },
 );
 </script>

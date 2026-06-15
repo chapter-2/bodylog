@@ -1,7 +1,7 @@
 import { requireAuth } from "../../utils/auth";
 
 export default defineEventHandler(async (event) => {
-  requireAuth(event);
+  await requireAuth(event);
 
   try {
     const body = await readBody(event);
@@ -23,13 +23,10 @@ export default defineEventHandler(async (event) => {
     }
 
     const db = getDb();
-    db.prepare(
-      `
-      INSERT INTO program_config (key, value)
-      VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
-    `,
-    ).run(`start_date_${mode}`, date);
+    await db.execute({
+      sql: `INSERT INTO program_config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      args: [`start_date_${mode}`, date],
+    });
 
     return { success: true };
   } catch (error: any) {

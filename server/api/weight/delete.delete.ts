@@ -2,7 +2,7 @@ import { getDb } from "../../utils/db";
 import { requireAuth } from "../../utils/auth";
 
 export default defineEventHandler(async (event) => {
-  requireAuth(event);
+  await requireAuth(event);
 
   const body = await readBody(event);
   const { week } = body;
@@ -16,11 +16,12 @@ export default defineEventHandler(async (event) => {
 
   try {
     const db = getDb();
-    db.prepare("DELETE FROM weight_entries WHERE week = ?").run(week);
-
+    await db.execute({
+      sql: "DELETE FROM weight_entries WHERE week = ?",
+      args: [week],
+    });
     return { success: true };
   } catch (error: any) {
-    console.error("Failed to delete weight entry:", error);
     throw createError({
       statusCode: 500,
       message: "Database error during delete",

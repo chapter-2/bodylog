@@ -2,7 +2,7 @@ import { getDb } from "../../utils/db";
 import { requireAuth } from "../../utils/auth";
 
 export default defineEventHandler(async (event) => {
-  requireAuth(event);
+  await requireAuth(event);
 
   const body = await readBody(event);
   const { week, date, weight, notes } = body;
@@ -32,23 +32,16 @@ export default defineEventHandler(async (event) => {
 
   try {
     const db = getDb();
-    const stmt = db.prepare(`
-            INSERT INTO weight_entries (week, date, weight, notes)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(week) DO UPDATE SET
-                date = excluded.date,
-                weight = excluded.weight,
-                notes = excluded.notes
-        `);
-
-    stmt.run(week, date, weight, safeNotes);
+    await db.execute({
+      sql: `INSERT INTO weight_entries (week, date, weight, notes) VALUES (?, ?, ?, ?) ON CONFLICT(week) DO UPDATE SET date = excluded.date, weight = excluded.weight, notes = excluded.notes`,
+      args: [week, date, weight, safeNotes],
+    });
 
     return { success: true };
   } catch (error: any) {
-    console.error("Failed to save weight entry:", error);
     throw createError({
       statusCode: 500,
-      message: `Database error during save: ${error.message}`,
+      message: `Database error: ${error.message}`,
     });
   }
 });

@@ -4,36 +4,30 @@ import { getDb } from "./db";
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
-  return `${salt}:${hash}`;
+  const derivedKey = scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${derivedKey}`;
 }
 
-export function verifyPassword(password: string, storedHash: string): boolean {
-  const [salt, key] = storedHash.split(":");
-  if (!salt || !key) return false;
-  const hashBuffer = scryptSync(password, salt, 64);
+export function verifyPassword(password: string, hash: string): boolean {
+  const [salt, key] = hash.split(":");
   const keyBuffer = Buffer.from(key, "hex");
-  return timingSafeEqual(hashBuffer, keyBuffer);
+  const derivedKey = scryptSync(password, salt, 64);
+  return timingSafeEqual(keyBuffer, derivedKey);
 }
 
-export function requireAuth(event: any) {
+export async function requireAuth(event: any) {
   const token = getCookie(event, "auth_token");
-
-  if (!token) {
-    throw createError({ statusCode: 401, message: "Unauthorized" });
-  }
+  if (!token) throw createError({ statusCode: 401, message: "Unauthorized" });
 
   const db = getDb();
-  const session = db
-    .prepare("SELECT user_id, expires_at FROM sessions WHERE token = ?")
-    .get(token) as any;
+  const result = await db.execute({
+    sql: "SELECT user_id FROM sessions WHERE token = ? AND expires_at > ?",
+    args: [token, Date.now()],
+  });
 
-  if (!session || session.expires_at < Date.now()) {
-    if (session) {
-      db.prepare("DELETE FROM sessions WHERE token = ?").run(token);
-    }
+  if (result.rows.length === 0) {
     throw createError({ statusCode: 401, message: "Session expired" });
   }
 
-  event.context.user_id = session.user_id;
+  event.context.user_id = result.rows[0].user_id;
 }
