@@ -23,6 +23,47 @@
                     {{ scheme.label }}
                 </button>
             </div>
+
+            <div
+                class="flex items-center gap-2 mt-3 pt-3 border-t border-separator/50"
+            >
+                <span
+                    class="font-mono text-[10px] text-foreground-text/50 uppercase tracking-widest shrink-0"
+                    >Custom:</span
+                >
+                <div class="flex items-center gap-1">
+                    <input
+                        v-model.number="customSets"
+                        type="number"
+                        min="1"
+                        max="10"
+                        class="w-12 bg-white border-2 border-separator rounded-lg px-2 py-1.5 text-xs font-mono text-center focus:outline-none focus:border-primary transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span
+                        class="font-mono text-xs text-foreground-text font-bold"
+                        >×</span
+                    >
+                    <input
+                        v-model.number="customReps"
+                        type="number"
+                        min="1"
+                        max="999"
+                        class="w-14 bg-white border-2 border-separator rounded-lg px-2 py-1.5 text-xs font-mono text-center focus:outline-none focus:border-primary transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                </div>
+                <button
+                    @click="selectCustomScheme"
+                    :class="[
+                        'px-3 py-1.5 rounded-lg border-2 font-mono font-bold text-xs transition-all shrink-0',
+                        isCustomActive
+                            ? 'border-primary bg-primary text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5 scale-105'
+                            : 'border-dashed border-separator bg-white text-foreground-text hover:border-foreground-primary',
+                    ]"
+                >
+                    {{ customSets }}×{{ customReps }}
+                </button>
+            </div>
+
             <p class="font-mono text-[10px] text-foreground-text/40 mt-2">
                 Sets × Target Reps. Applied to card = updates the badge.
             </p>
@@ -126,6 +167,16 @@ const setSchemes = [
     { label: "5×3", sets: 5, reps: 3 },
 ];
 
+const customSets = ref(3);
+const customReps = ref(10);
+const customActiveLabel = ref<string | null>(null);
+
+const isCustomActive = computed(() =>
+    props.activePalette?.type === "scheme" &&
+    customActiveLabel.value !== null &&
+    props.activePalette.label === customActiveLabel.value,
+);
+
 function selectScheme(scheme: any) {
     if (
         props.activePalette?.type === "scheme" &&
@@ -139,6 +190,45 @@ function selectScheme(scheme: any) {
         label: scheme.label,
         sets: scheme.sets,
         reps: scheme.reps,
+    });
+}
+
+function selectCustomScheme() {
+    const label = `${customSets.value}×${customReps.value}`;
+
+    // If matches predefined scheme, use predefined handler
+    const predefined = setSchemes.find((s) => s.label === label);
+    if (predefined) {
+        selectScheme(predefined);
+        customActiveLabel.value = null;
+        return;
+    }
+
+    // If non-custom scheme is active, forget old custom label
+    if (
+        props.activePalette?.type === "scheme" &&
+        customActiveLabel.value !== null &&
+        props.activePalette.label !== customActiveLabel.value
+    ) {
+        customActiveLabel.value = null;
+    }
+
+    // Toggle: same custom scheme already active → deselect
+    if (
+        props.activePalette?.type === "scheme" &&
+        customActiveLabel.value === label
+    ) {
+        emit("update:activePalette", null);
+        customActiveLabel.value = null;
+        return;
+    }
+
+    customActiveLabel.value = label;
+    emit("update:activePalette", {
+        type: "scheme",
+        label,
+        sets: customSets.value,
+        reps: customReps.value,
     });
 }
 
