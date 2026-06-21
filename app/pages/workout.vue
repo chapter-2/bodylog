@@ -334,6 +334,8 @@
 import {
     Dumbbell,
     Activity,
+    Heart,
+    Puzzle,
     ChevronLeft,
     ChevronRight,
     History,
@@ -343,7 +345,7 @@ import {
 } from "lucide-vue-next";
 import { ref, computed, onMounted, watch } from "vue";
 
-const { isGym, mode: currentMode } = useMode();
+const { isGym, isCalist, isCardio, mode: currentMode } = useMode();
 const { isAuthenticated, checkAuth, secureFetch } = useAuth();
 
 const isLoading = ref(true);
@@ -365,38 +367,69 @@ const ALL_DAYS = [
 ];
 
 // Mode-conditional values
-const heroIcon = computed(() => (isGym.value ? Dumbbell : Activity));
+const heroIcon = computed(() => {
+    if (isGym.value) return Dumbbell;
+    if (isCalist.value) return Activity;
+    if (isCardio.value) return Heart;
+    return Puzzle;
+});
 const heroIconClass = computed(() =>
     isGym.value ? "rotate-[-15deg]" : "",
 );
-const pageTitle = computed(() => (isGym.value ? "Gym Log" : "Calist Log"));
+const pageTitle = computed(() => {
+    if (isGym.value) return "Gym Log";
+    if (isCalist.value) return "Calist Log";
+    if (isCardio.value) return "Cardio Log";
+    return "Custom Program";
+});
 const pageTitleMb = computed(() => (isGym.value ? "mb-8" : "mb-4"));
-const pageSubtitle = computed(() =>
-    isGym.value ? null : "Pull-up Bar · Parallettes · Resistance Band",
-);
-const loadingLabel = computed(() =>
-    isGym.value ? "LOADING GYM DATA" : "LOADING CALIST DATA",
-);
-const programLabel = computed(() =>
-    isGym.value ? "Gym Program" : "Calist Program",
-);
+const pageSubtitle = computed(() => {
+    if (isGym.value) return null;
+    if (isCalist.value) return "Pull-up Bar · Parallettes · Resistance Band";
+    if (isCardio.value) return "Run · Cycle · Swim · Row";
+    return null;
+});
+const loadingLabel = computed(() => {
+    if (isGym.value) return "LOADING GYM DATA";
+    if (isCalist.value) return "LOADING CALIST DATA";
+    if (isCardio.value) return "LOADING CARDIO DATA";
+    return "LOADING CUSTOM DATA";
+});
+const programLabel = computed(() => {
+    if (isGym.value) return "Gym Program";
+    if (isCalist.value) return "Calist Program";
+    if (isCardio.value) return "Cardio Program";
+    return "Custom Program";
+});
 const previewText = computed(() =>
     isGym.value
         ? "Login to save your workouts & track progress"
         : "Login to save your sessions & track progress",
 );
-const historyTitle = computed(() =>
-    isGym.value ? "Recent Logs" : "Recent Sessions",
-);
-const emptyHistoryText = computed(() =>
-    isGym.value ? "No workouts logged yet." : "No sessions logged yet.",
-);
-const emptyHistoryGuestText = computed(() =>
-    isGym.value
-        ? "Login to see your workout history."
-        : "Login to see your session history.",
-);
-const emptyIcon = computed(() => (isGym.value ? Dumbbell : Activity));
+const historyTitle = computed(() => {
+    if (isGym.value) return "Recent Logs";
+    if (isCalist.value) return "Recent Sessions";
+    if (isCardio.value) return "Recent Sessions";
+    return "Recent Logs";
+});
+const emptyHistoryText = computed(() => {
+    if (isGym.value) return "No workouts logged yet.";
+    if (isCalist.value) return "No sessions logged yet.";
+    if (isCardio.value) return "No sessions logged yet.";
+    return "No workouts logged yet.";
+});
+const emptyHistoryGuestText = computed(() => {
+    if (isGym.value) return "Login to see your workout history.";
+    if (isCalist.value) return "Login to see your session history.";
+    if (isCardio.value) return "Login to see your session history.";
+    return "Login to see your workout history.";
+});
+const emptyIcon = computed(() => {
+    if (isGym.value) return Dumbbell;
+    if (isCalist.value) return Activity;
+    if (isCardio.value) return Heart;
+    return Puzzle;
+});
 
 const apiMode = computed(() => currentMode.value || "gym");
 
