@@ -1,312 +1,296 @@
-# Implementation Plan: Unify Gym + Calist + Cardio Exercise System
+# Implementation Plan — Phase 3: Client-Side Migration to Unified Workout API
 
 ## Goal
-Replace the gym/calist silo with a single workout system where each exercise carries its own `exercise_type` (`'gym' | 'calist' | 'cardio'`), while keeping the global training mode for program defaults and onboarding.
+
+Fix all remaining references to deleted `/api/gym/` and `/api/calist/` endpoints, widen components to support all 4 mode types (gym, calist, cardio, custom), and remove dead code.
 
 ---
 
-## Decision Summary
+## Issues Found (with concrete fixes)
 
-### Decision 1: Merge gym_sessions + calist_sessions into one table. Keep cardio_sessions separate.
+### 1. `app/pages/workout.vue` — `loadHistory()` uses deleted API
 
-**Why:**
-- gym_sessions and calist_sessions share identical 12-column schema (set1..set4, completed, notes, session_note).
-- cardio_sessions has different columns (duration_min, distance_km; no set1-set4, no completed).
-- Forcing cardio into the same table would create 6+ always-null columns for every gym/calist row → sparse, confusing.
-- Cardio is a different domain model: time/distance recording, not set-by-set logging.
-- A workout day can mix gym + calist exercises in one session without cardio. Cardio stays as a separate logging concept.
+**Line 485:** `secureFetch(\`/api/${apiMode.value}/get\`)`→ constructs`/api/gym/get`or`/api/calist/get` — both endpoints deleted.
 
-**New table: `workout_sessions`**
-Same columns as gym_sessions/calist_sessions + one new column:
-```sql
-CREATE TABLE workout_sessions (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id       INTEGER NOT NULL,
-  week          INTEGER NOT NULL,
-  day           TEXT    NOT NULL,
-  date          TEXT    NOT NULL,
-  time          TEXT    DEFAULT '',
-  exercise_name TEXT    NOT NULL,
-  exercise_type TEXT    NOT NULL DEFAULT 'gym',  -- NEW: 'gym' | 'calist' | 'cardio'
-  set1          TEXT    DEFAULT '-',
-  set2          TEXT    DEFAULT '-',
-  set3          TEXT    DEFAULT '-',
-  set4          TEXT    DEFAULT '-',
-  completed     TEXT    DEFAULT 'NO',
-  notes         TEXT    DEFAULT '',
-  session_note  TEXT    DEFAULT '',
-  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-  UNIQUE(user_id, week, day, exercise_name)
+**Fix — line 485, change to:**
+
+```ts
+const { data } = await secureFetch(
+  `/api/workout/get?exercise_type=${apiMode.value}`,
 );
 ```
 
-**cardio_sessions stays unchanged.**
-
-### Decision 2: New unified TypeScript types.
-
-Replace `GymSession`, `CalistSession`, `CalistExercisePayload` with a single `WorkoutSession` that holds a discriminated `WorkoutExercise[]` array. Each exercise declares its own `type`.
-
-### Decision 3: `useMode()` transforms — global mode still exists but narrows to "program default + navbar label."
-
-- Mode cookie stays: `gym`, `calist`, `cardio`, `custom` still valid values.
-- `isGym`/`isCalist` used for: program defaults (which template to load), navbar label, mode selector label, tour flow.
-- `isGym`/`isCalist` no longer used to decide which form component to render. One `WorkoutForm` handles all exercise types per-exercise.
-- `hasMode` expands: `gym`, `calist`, `cardio`, `custom` all valid → mode selector shown only when `mode === ''`.
-
-### Decision 4: Migration order — backward-compatible, no breakage.
-
-Phase through 5 steps: DB migration (dual-write), API unification, type unification, UI unification, cleanup.
+`apiMode` (computed on line 401: `isGym.value ? "gym" : "calist"`) maps to valid `exercise_type` values. Response is identical flat array columns 0-11, column 12 (exercise_type) is new and ignored.
 
 ---
 
-## Tasks
+### 2. `app/pages/coach.vue` — `handleSummonTrainer()` uses deleted API
 
-### Phase 1 — Database Migration (zero-downtime, backward-compatible)
+**Line 232:** `isGym.value ? secureFetch("/api/gym/get") : secureFetch("/api/calist/get")`
 
-1. **Add `workout_sessions` table to `initDb()`**
-   - File: `server/utils/db.ts`
-   - Changes: Add `CREATE TABLE IF NOT EXISTS workout_sessions` to `initDb()` (columns as specified above).
-   - Verify: App starts, new table exists, old tables untouched.
+**Fix — line 232, change to:**
 
-2. **Migrate existing data from gym_sessions + calist_sessions into workout_sessions**
-   - File: new file `server/api/migration/migrate-workout-sessions.get.ts` (temporary, one-shot)
-   - Changes: Single GET handler that:
-     1. `INSERT INTO workout_sessions (...) SELECT ... FROM gym_sessions` with `'gym'` as `exercise_type`
-     2. `INSERT INTO workout_sessions (...) SELECT ... FROM calist_sessions` with `'calist'` as `exercise_type`
-     3. Skip rows already migrated (use the `UNIQUE` constraint or a flag column)
-   - Verify: `workout_sessions` has all rows from both tables with correct `exercise_type`. Run query to count.
+```ts
+secureFetch(`/api/workout/get?exercise_type=${isGym.value ? "gym" : "calist"}`);
+```
 
-### Phase 2 — API Layer (dual-read/dual-write)
+Response has same `data` shape. CSV builders `buildGymCsv`/`buildCalistCsv` read only columns 0-11, unchanged.
 
-3. **Create unified `workout/get.get.ts`**
-   - File: `server/api/workout/get.get.ts`
-   - Changes: Copy pattern from gym/get, read from `workout_sessions` table. Add `exercise_type` to flat array output as new column (column index 12, after session_note). Accept optional `?exercise_type=` filter.
-   - Verify: Returns flat data matching gym/get shape + one extra field.
+---
 
-4. **Create unified `workout/save.post.ts`**
-   - File: `server/api/workout/save.post.ts`
-   - Changes: Accept `WorkoutSession` payload where each exercise has `type: 'gym' | 'calist'`. Format sets per type (gym: `"20kg × 10"`, calist: `"12 reps"` or `"30s"`). INSERT into `workout_sessions`.
-   - Verify: POST workout → data appears in `workout_sessions` table.
+### 3. `server/api/export/all.get.ts` — queries deleted tables
 
-5. **Rewrite gym/get to read from `workout_sessions` with `exercise_type='gym'` filter**
-   - File: `server/api/gym/get.get.ts`
-   - Changes: Change SQL from `FROM gym_sessions` to `FROM workout_sessions WHERE exercise_type = 'gym'`. Same column order in output.
-   - Verify: Existing gym page still works unchanged.
+**Lines 7-12:** Queries `gym_sessions` and `calist_sessions` — both tables dropped from schema.
 
-6. **Rewrite calist/get to read from `workout_sessions` with `exercise_type='calist'` filter**
-   - File: `server/api/calist/get.get.ts`
-   - Changes: Same pattern — read from `workout_sessions WHERE exercise_type = 'calist'`.
-   - Verify: Existing calist page still works unchanged.
+**Fix — replace the two SELECT statements:**
 
-7. **Rewrite gym/save to write to `workout_sessions` + backfill gym_sessions**
-   - File: `server/api/gym/save.post.ts`
-   - Changes: Insert into `workout_sessions` with `exercise_type='gym'`. Also write to `gym_sessions` (dual-write) as safety net.
-   - Verify: Both tables have the saved data.
+```ts
+const gymSessions = await db.execute(
+  "SELECT * FROM workout_sessions WHERE exercise_type = 'gym' ORDER BY week ASC",
+);
+const calistSessions = await db.execute(
+  "SELECT * FROM workout_sessions WHERE exercise_type = 'calist' ORDER BY week ASC",
+);
+```
 
-8. **Rewrite calist/save to write to `workout_sessions` + backfill calist_sessions**
-   - File: `server/api/calist/save.post.ts`
-   - Changes: Same dual-write pattern, `exercise_type='calist'`.
-   - Verify: Both tables have the saved data.
+Return shape `{ gym: rows, calist: rows, weight: rows }` unchanged. Callers on coach page unaffected.
 
-### Phase 3 — Type Unification
+---
 
-9. **Add unified types to `types/index.ts`**
-   - File: `types/index.ts`
-   - Changes: Add new types, keep old types (marked `@deprecated`):
-     ```typescript
-     // New unified types
-     export type ExerciseType = 'gym' | 'calist' | 'cardio';
+### 4. `app/components/TheNavbar.vue` — labels + mode button gym/calist only
 
-     export interface WorkoutSetGym {
-       weight: number;
-       reps: number;
-     }
+**Lines to fix:**
 
-     export interface WorkoutSetCalist {
-       value: number;       // reps or seconds
-       unit: 'reps' | 's';  // derived from exercise type
-     }
+- Line ~45 (desktop nav label): `{{ isGym ? "Gym Log" : "Calist Log" }}`
+- Line ~137 (mobile nav label): `{{ isGym ? "GYM LOG" : "CALIST LOG" }}`
+- Line ~43 (desktop mode button text): `{{ isGym ? "GYM" : "CALIST" }}`
+- Line ~157 (mobile mode button text): `{{ isGym ? "GYM" : "CALIST" }}`
 
-     export interface WorkoutSetCardio {
-       duration_min: number;
-       distance_km: number;
-     }
+**Fix — add computed to script block:**
 
-     export interface WorkoutExercise {
-       name: string;
-       type: ExerciseType;
-       variants?: string[];           // gym: equipment variants
-       selectedVariant?: string;
-       subs?: { label: string; value: string }[]; // calist: progression subs
-       selectedSub?: string;
-       sets: WorkoutSetGym[] | WorkoutSetCalist[]; // discriminated by type
-       targetReps?: number;
-       note?: string;
-     }
+```ts
+const modeLabel = computed(() => {
+  if (isGym.value) return "Gym";
+  if (isCalist.value) return "Calist";
+  if (isCardio.value) return "Cardio";
+  return "Custom";
+});
 
-     export interface WorkoutSession {
-       week: number;
-       day: string;
-       date: string;
-       time?: string;
-       exercises: WorkoutExercise[];
-       completed: boolean;
-       sessionNote?: string;
-     }
-     ```
-   - Verify: `nuxt build` passes. Old types still available for gradual migration.
+const modeIcon = computed(() => {
+  if (isGym.value) return Dumbbell;
+  if (isCalist.value) return Activity;
+  if (isCardio.value) return Heart;
+  return SlidersHorizontal;
+});
+```
 
-### Phase 4 — UI Unification
+**Template changes:**
 
-10. **Create unified `WorkoutForm.vue` component**
-    - File: `app/components/WorkoutForm.vue`
-    - Changes: Merge GymWorkoutForm + CalistWorkoutForm logic. Key differences handled per-exercise via `WorkoutExercise.type`:
-      - Exercise template: read from unified program config (changed from mode-specific to exercise-type-aware)
-      - Save: POST to `/api/workout/save` (new endpoint)
-      - Draft key: `bodylog_draft_${props.week}_${props.day}` (no longer gym/calist prefix)
-      - Set rendering: `type === 'gym'` → weight+reps inputs; `type === 'calist'` → single value input with unit label
-      - `Pass mode` prop to ExerciseCard as `exercise.type` instead of global `"gym"`/`"calist"`
-    - Verify: Compiles. (Not yet wired into page.)
+- Desktop nav: `{{ modeLabel }} Log`
+- Mobile nav: `{{ modeLabel.toUpperCase() }} LOG`
+- Mode button text: `{{ modeLabel.toUpperCase() }}`
+- Mode button icon: `<component :is="modeIcon" />` replacing `<Dumbbell v-if="isGym" ... />` / `<Activity v-else ... />`
 
-11. **Update `ExerciseCard.vue` to handle per-exercise type**
-    - File: `app/components/workout/ExerciseCard.vue`
-    - Changes: Accept `exerciseType: 'gym' | 'calist'` prop (or derive from model). Replace `props.mode` with exercise-level type. All mode-conditional branches (input format, unit display, copyLastWeekSet parsing) key off this.
-    - Verify: Works with both old forms (still passing global mode) and new unified form.
+**Imports to add:** `import { Heart, SlidersHorizontal, Dumbbell, Activity, ... } from "lucide-vue-next"`
 
-12. **Wire `workout.vue` page to use unified `WorkoutForm`**
-    - File: `app/pages/workout.vue`
-    - Changes: Replace conditional `<GymWorkoutForm v-if="isGym">` / `<CalistWorkoutForm v-else>` with single `<WorkoutForm>`. Remove `apiMode` computed. Remove `isGym`-conditional text strings. Keep `isGym` only for hero icon and page title ("Gym Log" vs "Calist Log" still based on mode for now).
-    - Verify: Both gym and calist users see unified form, can log exercises of either type.
+---
 
-### Phase 5 — Cleanup & Expansion
+### 5. `app/components/ModeSelectorModal.vue` — only 2 mode buttons
 
-13. **Add cardio exercise support to `WorkoutForm`**
-    - File: `app/components/WorkoutForm.vue`
-    - Changes: When exercise `type === 'cardio'`, render duration_min + distance_km inputs instead of sets. Save cardio exercises to `cardio_sessions` table (not `workout_sessions`) via a separate fetch or conditional save logic.
-    - Verify: Cardio exercises appear and save correctly.
+**Problems:**
 
-14. **Update `program/get` and `program/save` to support mode-agnostic config**
-    - File: `server/api/program/get.get.ts`, `server/api/program/save.post.ts`
-    - Changes: Still accept `?mode=` param. Internally, program config stores exercise templates with `type` field. No schema change needed (JSON in `program_config.value`). Example entry:
-      ```json
-      { "monday": { "name": "Full Body A", "exercises": [
-        { "name": "Barbell Squat", "type": "gym", "sets": 4, "targetReps": 8 },
-        { "name": "Pull-up", "type": "calist", "sets": 3, "targetReps": 8 },
-        { "name": "Run", "type": "cardio", "targetDurationMin": 20 }
-      ]}}
-      ```
-    - Verify: Program editor saves and loads exercises with type field.
+- Line ~112: `selectDirectMode(m: "gym" | "calist")` — narrow type
+- Template: `grid-cols-2` with only GYM and CALIST buttons, no cardio/custom
 
-15. **Update `ProgramEditorSidebar.vue` to handle per-exercise type**
-    - File: `app/components/ProgramEditorSidebar.vue`
-    - Changes: Exercise list items include type toggle (gym/calist/cardio). Equipment palette adapts to selected type. Cardio exercises have no set scheme selection.
-    - Verify: Editor shows type dropdown per exercise.
+**Fix — template:** Change grid to 2×2 layout (`grid-cols-2` stays, add `divide-y divide-separator`). Add 2 new buttons:
 
-16. **Remove old tables and old API endpoints (post-stabilization)**
-    - After all UI verified stable:
-    - Drop `gym_sessions` and `calist_sessions` tables from `initDb()`
-    - Remove `server/api/gym/` and `server/api/calist/` directories
-    - Remove `GymWorkoutForm.vue` and `CalistWorkoutForm.vue` components
-    - Remove deprecated types from `types/index.ts`
+- **CARDIO:** `<Activity>` icon, label "CARDIO", subtext "Running, cycling, swimming."
+- **CUSTOM:** `<SlidersHorizontal>` icon (new import), label "CUSTOM", subtext "Build your own."
 
-17. **Update `useMode()` composable**
-    - File: `app/composables/useMode.ts`
-    - Changes:
-      - Expand `hasMode`: `mode.value === 'gym' || mode.value === 'calist' || mode.value === 'cardio' || mode.value === 'custom'`
-      - No other structural changes. The mode remains for program defaults selection.
-    - Verify: ModeSelectorModal appears only when no mode set. All 4 modes accepted.
+**Fix — script:**
 
-18. **Update export endpoint**
-    - File: `server/api/export/all.get.ts`
-    - Changes: Read from `workout_sessions` instead of `gym_sessions` + `calist_sessions`. Include `exercise_type` in exported data.
-    - Verify: Export returns all workout data with type column.
+- Widen: `selectDirectMode(m: "gym" | "calist" | "cardio" | "custom")`
+- Import `SlidersHorizontal` from `lucide-vue-next`
+
+`navigateTo("/workout")` at end of `selectDirectMode` stays — all modes go to workout page.
+
+---
+
+### 6. `app/composables/useMode.ts` — `hasMode` excludes cardio/custom
+
+**Line ~84:** `hasMode = computed(() => mode.value === "gym" || mode.value === "calist")`
+
+**Fix:**
+
+```ts
+const hasMode = computed(() =>
+  ["gym", "calist", "cardio", "custom"].includes(mode.value),
+);
+```
+
+**⚠️ ORDER DEPENDENCY:** This MUST be applied AFTER Issue 5 (ModeSelectorModal has 4 buttons). If `hasMode` expands first, selecting cardio/custom before buttons exist triggers `hasMode=true` and the modal closes — the user would never see it. Reorder: do Issue 5 first, then Issue 6.
+
+---
+
+### 7. `app/components/ProgramEditorSidebar.vue` — mode prop narrow
+
+**Line ~118:** `mode: "gym" | "calist"`
+
+**Fix:** Widen to `mode: "gym" | "calist" | "cardio" | "custom"`.
+
+**Line ~22 (template header):** `{{ mode === "gym" ? "GYM" : "CALIST" }}`
+
+**Fix:** Replace with computed:
+
+```ts
+const modeLabel = computed(() => {
+  const map: Record<string, string> = {
+    gym: "GYM",
+    calist: "CALIST",
+    cardio: "CARDIO",
+    custom: "CUSTOM",
+  };
+  return map[props.mode] || props.mode.toUpperCase();
+});
+```
+
+And matching dynamic icon (import `Heart`, `SlidersHorizontal` from lucide, replace `<Dumbbell v-if>`/`<Activity v-else>` pattern with `<component :is="modeIcon" />`).
+
+---
+
+### 8. `app/components/editor/EditorExerciseList.vue` — mode prop narrow
+
+**Line ~176:** `mode: "gym" | "calist"`
+
+**Fix:** Widen to `mode: "gym" | "calist" | "cardio" | "custom"`.
+
+No other logic changes. Hold/reps toggle (line ~87: `v-if="mode === 'calist'"`) only activates for calist — correct. Cardio/custom exercises get no toggle, which is acceptable graceful degrade.
+
+---
+
+### 9. `app/components/editor/EditorPalette.vue` — mode prop narrow + no cardio equipment
+
+**Line ~133:** `mode: "gym" | "calist"`
+
+**Fix:** Widen to `mode: "gym" | "calist" | "cardio" | "custom"`.
+
+**Line ~141:** `equipmentPresets` computed returns gym equipment OR calist equipment via ternary. No cardio equipment.
+
+**Fix:** Replace with lookup:
+
+```ts
+const cardioEquipment = [
+  "Treadmill",
+  "Stationary Bike",
+  "Rowing Machine",
+  "Elliptical",
+  "Stairmaster",
+  "Jump Rope",
+];
+const allEquipment = [...gymEquipment, ...calistEquipment, ...cardioEquipment];
+
+const equipmentPresets = computed(() => {
+  if (props.mode === "gym") return gymEquipment;
+  if (props.mode === "calist") return calistEquipment;
+  if (props.mode === "cardio") return cardioEquipment;
+  return allEquipment; // custom gets all
+});
+```
+
+---
+
+### 10. `app/components/workout/ExerciseCard.vue` — mode prop narrow
+
+**Line ~238:** `mode: "gym" | "calist"`
+
+**Fix:** Widen to `mode: "gym" | "calist" | "cardio" | "custom"`.
+
+Template checks `mode === "gym"` (shows weight×reps inputs) and `mode === "calist"` (shows value input). When mode is "cardio" or "custom", neither branch renders — shows exercise name + note only. Graceful degrade, acceptable for now.
+
+---
+
+### 11. Delete `app/components/GymWorkoutForm.vue`
+
+Dead code. Calls deleted `/api/gym/get` and `/api/gym/save`. Zero imports reference it anywhere in `app/`. Replaced by `WorkoutForm.vue`.
+
+---
+
+### 12. Delete `app/components/CalistWorkoutForm.vue`
+
+Dead code. Calls deleted `/api/calist/get` and `/api/calist/save`. Zero imports reference it anywhere in `app/`. Replaced by `WorkoutForm.vue`.
+
+---
+
+## Files Already Correct (No Changes)
+
+- `app/components/OnboardingTour.vue` — Already uses `navigateTo("/workout?tour=…")` for steps 3-4. No old routes.
+- `app/utils/tourConfig.ts` — Targets `nav-log`/`mob-log` element IDs (unchanged in navbar). No route references.
+- `app/utils/workoutDefaults.ts` — No route or API references.
+- `app/components/WorkoutForm.vue` — Already calls `/api/workout/get` and `/api/workout/save`.
+- `app/app.vue` — Uses `hasMode` from composable, no direct route references.
+
+---
+
+## Task Execution Order
+
+### Phase 3A — Mode Foundation (dependencies required)
+
+1. **Fix ModeSelectorModal.vue** — add cardio + custom buttons (Issue 5)
+2. **Fix useMode.ts hasMode** — expand to 4 modes (Issue 6) — AFTER Issue 5
+3. **Fix TheNavbar.vue** — dynamic labels + icons (Issue 4)
+
+### Phase 3B — Component Type Widening (no strict deps)
+
+4. **Fix ProgramEditorSidebar.vue** — widen mode, dynamic header (Issue 7)
+5. **Fix EditorExerciseList.vue** — widen mode prop only (Issue 8)
+6. **Fix EditorPalette.vue** — widen mode + cardio equipment (Issue 9)
+7. **Fix ExerciseCard.vue** — widen mode prop only (Issue 10)
+
+### Phase 3C — API Endpoint Migration (runtime crash fixes)
+
+8. **Fix workout.vue loadHistory()** — change to `/api/workout/get` (Issue 1)
+9. **Fix coach.vue handleSummonTrainer()** — change to `/api/workout/get` (Issue 2)
+10. **Fix export/all.get.ts** — query `workout_sessions` instead of `gym_sessions`/`calist_sessions` (Issue 3)
+
+### Phase 3D — Dead Code Removal (last, safety valve)
+
+11. **Delete GymWorkoutForm.vue** (Issue 11)
+12. **Delete CalistWorkoutForm.vue** (Issue 12)
 
 ---
 
 ## Files to Modify
 
-| File | Phase | Change |
-|------|-------|--------|
-| `server/utils/db.ts` | 1 | Add `workout_sessions` table to `initDb()` |
-| `types/index.ts` | 3 | Add `WorkoutExercise`, `WorkoutSession` types; deprecate old types |
-| `server/api/gym/get.get.ts` | 2 | Read from `workout_sessions WHERE exercise_type='gym'` |
-| `server/api/gym/save.post.ts` | 2 | Dual-write to `workout_sessions` + `gym_sessions` |
-| `server/api/calist/get.get.ts` | 2 | Read from `workout_sessions WHERE exercise_type='calist'` |
-| `server/api/calist/save.post.ts` | 2 | Dual-write to `workout_sessions` + `calist_sessions` |
-| `app/components/workout/ExerciseCard.vue` | 4 | Accept per-exercise type, not global mode |
-| `app/pages/workout.vue` | 4 | Wire unified WorkoutForm, remove `isGym` branching |
-| `app/components/ProgramEditorSidebar.vue` | 5 | Type toggle per exercise, mixed exercise programs |
-| `app/components/editor/EditorExerciseList.vue` | 5 | Handle `type` field on exercise items |
-| `app/components/editor/EditorPalette.vue` | 5 | Conditional equipment/schemes per type |
-| `app/composables/useMode.ts` | 5 | Expand `hasMode` to include cardio + custom |
-| `server/api/program/get.get.ts` | 5 | No schema change; config JSON now includes `type` field |
-| `server/api/program/save.post.ts` | 5 | No schema change |
-| `server/api/export/all.get.ts` | 5 | Read from `workout_sessions` |
-| `app/components/TheNavbar.vue` | 5 | Minor: mode label display for cardio |
-| `app/components/ModeSelectorModal.vue` | 5 | Add cardio option to mode selector |
-| `app/app.vue` | 5 | `hasMode` covers all modes |
+| File                                           | Issue # |
+| ---------------------------------------------- | ------- |
+| `app/pages/workout.vue`                        | 1       |
+| `app/pages/coach.vue`                          | 2       |
+| `server/api/export/all.get.ts`                 | 3       |
+| `app/components/TheNavbar.vue`                 | 4       |
+| `app/components/ModeSelectorModal.vue`         | 5       |
+| `app/composables/useMode.ts`                   | 6       |
+| `app/components/ProgramEditorSidebar.vue`      | 7       |
+| `app/components/editor/EditorExerciseList.vue` | 8       |
+| `app/components/editor/EditorPalette.vue`      | 9       |
+| `app/components/workout/ExerciseCard.vue`      | 10      |
 
-## New Files
+## Files to Delete
 
-| File | Phase | Purpose |
-|------|-------|---------|
-| `server/api/migration/migrate-workout-sessions.get.ts` | 1 | One-shot data migration script |
-| `server/api/workout/get.get.ts` | 2 | Unified workout GET endpoint |
-| `server/api/workout/save.post.ts` | 2 | Unified workout SAVE endpoint |
-| `app/components/WorkoutForm.vue` | 4 | Merged GymWorkoutForm + CalistWorkoutForm |
-
-## Files to Eventually Remove
-
-| File | Phase | Reason |
-|------|-------|--------|
-| `app/components/GymWorkoutForm.vue` | 5 | Replaced by WorkoutForm |
-| `app/components/CalistWorkoutForm.vue` | 5 | Replaced by WorkoutForm |
-| `server/api/gym/get.get.ts` | 5 | Replaced by workout/get |
-| `server/api/gym/save.post.ts` | 5 | Replaced by workout/save |
-| `server/api/calist/get.get.ts` | 5 | Replaced by workout/get |
-| `server/api/calist/save.post.ts` | 5 | Replaced by workout/save |
-
----
-
-## Dependencies
-
-```
-Phase 1 (DB) → all other phases
-Phase 2 (API dual-read/write) → Phase 3,4 (types + UI depend on backend working)
-Phase 3 (types) → Phase 4 (UI uses new types)
-Phase 4 (UI) → Phase 5 (cleanup only after UI verified)
-Task 9 → Task 10,11 (types before UI)
-Task 10 → Task 12 (form before page wiring)
-Task 3,4 (new API) can run parallel to Task 5-8 (rewrite old API)
-```
+| File                                   | Issue # |
+| -------------------------------------- | ------- |
+| `app/components/GymWorkoutForm.vue`    | 11      |
+| `app/components/CalistWorkoutForm.vue` | 12      |
 
 ---
 
 ## Risks
 
-1. **UNIQUE constraint on `workout_sessions(user_id, week, day, exercise_name)`**: Two exercises of same name but different `exercise_type` would fail. **Mitigation**: Include `exercise_type` in the UNIQUE constraint: `UNIQUE(user_id, week, day, exercise_type, exercise_name)`.
-
-2. **Draft localStorage keys**: GymWorkoutForm and CalistWorkoutForm use different keys (`bodylog_draft_gym_...` vs `bodylog_draft_calist_...`). Switching to unified form drops old drafts. **Mitigation**: Acceptable loss — drafts are ephemeral. Can implement draft migration as a nice-to-have.
-
-3. **Program config backward compatibility**: Existing `program_gym` and `program_calist` keys in `program_config` table don't have `type` field on exercises. **Mitigation**: Phase 4/5 code treats missing `type` as default `'gym'` for gym programs, `'calist'` for calist programs. No data migration needed for program_config JSON.
-
-4. **Set format strings differ**: Gym stores `"20kg × 10"`, calist stores `"12 reps"` or `"30s"`. Unified table must handle both formats in same column. **Mitigation**: Already the case — `set1..set4` are TEXT columns. Parsing logic in ExerciseCard already handles both formats based on mode. No change needed.
-
-5. **No test coverage**: Any regression in gym or calist logging breaks silently. **Mitigation**: Manual verification checklist: create workout → save → reload page → verify data persists → switch day → switch week → edit program → save → verify.
-
-6. **cardio_sessions stays separate but exercise_type='cardio' exists on WorkoutExercise**: Ambiguitas: do cardio exercises go to `workout_sessions` or `cardio_sessions`? **Decision**: Cardio exercises with sets-like tracking (e.g., rounds) go to `workout_sessions` with type `cardio`. Pure time/distance cardio (single entry per day) stays in `cardio_sessions`. If cardio needs to be fully integrated later, that's a separate migration.
-
-7. **Export endpoint shape change**: Adding `exercise_type` to the flat array output changes the column count and indices. Downstream consumers (AI coach page) depend on array indices. **Mitigation**: Phase 2 keeps old API endpoints unchanged (same 12-column output). Phase 5's export endpoint change is intentional and documented.
-
----
-
-## Acceptance Criteria
-
-- Gym exercises and calist exercises can coexist in one workout day
-- Each exercise displays with correct input format (weight×reps vs single value)
-- Existing data from gym_sessions and calist_sessions preserved in workout_sessions
-- Mode selector still works for program defaults
-- Navbar still shows correct mode label
-- Save → reload → data persists correctly
-- Program editor supports mixed-type exercises
-- No UI regression on gym or calist pages during migration
+| Risk                                                                   | Severity | Mitigation                                                                                                                         |
+| ---------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `hasMode` expansion before ModeSelectorModal has 4 buttons             | Medium   | Do Modal (Issue 5) before `hasMode` (Issue 6)                                                                                      |
+| Cardio/custom modes have no program defaults                           | Low      | `workoutDefaults.ts` only has gym/calist defaults. Cardio/custom users see empty workout form — acceptable                         |
+| Cardio/custom exercises in ExerciseCard render nothing                 | Low      | Graceful degrade — shows name + note only. Full cardio/exercise type UI in Phase 4                                                 |
+| Export API returns extra columns (id + exercise_type) from `SELECT *`  | Low      | Callers only iterate rows by index 0-11, ignore extra columns                                                                      |
+| `WorkoutForm.vue` exercise type defaults to "calist" for cardio/custom | Low      | Only affects save payload format. Cardio data stored with `exercise_type='calist'` in DB — acceptable until Phase 4                |
+| No build verification                                                  | Medium   | Run `nuxt build` after all changes                                                                                                 |
+| No tests exist                                                         | High     | Manual smoke test: login → select each mode → open workout page → verify page loads without errors. Check browser console for 404s |

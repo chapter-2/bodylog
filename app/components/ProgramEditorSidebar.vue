@@ -30,8 +30,10 @@
                         class="font-mono text-[10px] uppercase tracking-widest text-primary flex items-center gap-1.5 mb-1"
                     >
                         <Dumbbell v-if="mode === 'gym'" class="w-3 h-3" />
-                        <Activity v-else class="w-3 h-3" />
-                        {{ mode === "gym" ? "GYM" : "CALIST" }} ·
+                        <Activity v-else-if="mode === 'calist'" class="w-3 h-3" />
+                        <Heart v-else-if="mode === 'cardio'" class="w-3 h-3" />
+                        <Settings v-else class="w-3 h-3" />
+                        {{ mode.toUpperCase() }} ·
                         {{ dayDisplayName }}
                     </p>
                     <h2
@@ -109,13 +111,13 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
-import { X, Save, Dumbbell, Activity } from "lucide-vue-next";
+import { X, Save, Dumbbell, Activity, Heart, Settings } from "lucide-vue-next";
 import EditorExerciseList from "./editor/EditorExerciseList.vue";
 import EditorPalette from "./editor/EditorPalette.vue";
 
 const props = defineProps<{
     open: boolean;
-    mode: "gym" | "calist";
+    mode: "gym" | "calist" | "cardio" | "custom";
     day: string;
     exercises: any[];
 }>();

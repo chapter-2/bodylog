@@ -27,7 +27,7 @@
                     </h3>
                 </div>
 
-                <div class="grid grid-cols-2 divide-x divide-separator">
+                <div class="grid grid-cols-2 divide-x divide-y divide-separator">
                     <button
                         @click="selectDirectMode('gym')"
                         class="p-8 text-left hover:bg-[#fcfbf7] transition-colors group flex flex-col gap-4"
@@ -71,6 +71,50 @@
                             </p>
                         </div>
                     </button>
+
+                    <button
+                        @click="selectDirectMode('cardio')"
+                        class="p-8 text-left hover:bg-[#fcfbf7] transition-colors group flex flex-col gap-4"
+                    >
+                        <Heart
+                            class="w-10 h-10 text-primary group-hover:scale-110 transition-transform"
+                            :stroke-width="1.5"
+                        />
+                        <div>
+                            <h4
+                                class="text-2xl font-black uppercase text-foreground-primary group-hover:text-primary transition-colors"
+                            >
+                                CARDIO
+                            </h4>
+                            <p
+                                class="font-mono text-xs text-foreground-text mt-2 leading-relaxed opacity-80"
+                            >
+                                Run, row, & ride.
+                            </p>
+                        </div>
+                    </button>
+
+                    <button
+                        @click="selectDirectMode('custom')"
+                        class="p-8 text-left hover:bg-[#fcfbf7] transition-colors group flex flex-col gap-4"
+                    >
+                        <Wrench
+                            class="w-10 h-10 text-primary group-hover:rotate-12 transition-transform"
+                            :stroke-width="1.5"
+                        />
+                        <div>
+                            <h4
+                                class="text-2xl font-black uppercase text-foreground-primary group-hover:text-primary transition-colors"
+                            >
+                                CUSTOM
+                            </h4>
+                            <p
+                                class="font-mono text-xs text-foreground-text mt-2 leading-relaxed opacity-80"
+                            >
+                                Your own program.
+                            </p>
+                        </div>
+                    </button>
                 </div>
             </div>
         </div>
@@ -78,14 +122,14 @@
 </template>
 
 <script setup lang="ts">
-import { Dumbbell, Activity, X } from "lucide-vue-next";
+import { Dumbbell, Activity, Heart, Wrench, X } from "lucide-vue-next";
 
 defineProps<{ show: boolean }>();
 const emit = defineEmits(["close"]);
 
 const { setMode, hasMode } = useMode();
 
-function selectDirectMode(m: "gym" | "calist") {
+function selectDirectMode(m: "gym" | "calist" | "cardio" | "custom") {
     setMode(m);
     emit("close");
     navigateTo("/workout");

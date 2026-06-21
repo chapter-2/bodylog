@@ -201,7 +201,7 @@ import {
     ChevronDown,
 } from "lucide-vue-next";
 
-const props = defineProps<{ mode: "gym" | "calist"; activePalette: any }>();
+const props = defineProps<{ mode: "gym" | "calist" | "cardio" | "custom"; activePalette: any }>();
 const localExercises = defineModel<any[]>("exercises", { required: true });
 const emit = defineEmits(["update:activePalette"]);
 

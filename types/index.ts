@@ -1,8 +1,10 @@
+/** @deprecated Use WorkoutSetGym / WorkoutExercise instead */
 export interface WorkoutSet {
   weight: number;
   reps: number;
 }
 
+/** @deprecated Use WorkoutExercise instead */
 export interface Exercise {
   name: string;
   selectedVariant?: string;
@@ -10,6 +12,7 @@ export interface Exercise {
   note?: string;
 }
 
+/** @deprecated Use WorkoutSession instead */
 export interface WorkoutDay {
   week: number;
   day: string;
@@ -27,6 +30,7 @@ export interface BulkEntry {
   notes?: string;
 }
 
+/** @deprecated Use WorkoutSession instead */
 export interface GymSession {
   week: number;
   day: string;
@@ -46,18 +50,51 @@ export interface GymProgram {
 }
 
 // ─── Calisthenics types ───
+/** @deprecated Use WorkoutExercise instead */
 export interface CalistExercisePayload {
   name: string;
   sets: string[];
   note: string;
 }
 
+/** @deprecated Use WorkoutSession instead */
 export interface CalistSession {
   week: number;
   day: string;
   date: string;
   time?: string;
   exercises: CalistExercisePayload[];
+  completed: boolean;
+  sessionNote?: string;
+}
+
+// ─── Unified types (replace old types above) ───
+
+export type ExerciseType = 'gym' | 'calist' | 'cardio';
+
+export interface WorkoutSetGym { weight: number; reps: number; }
+export interface WorkoutSetCalist { value: number; unit: 'reps' | 's'; }
+
+export interface WorkoutExercise {
+  name: string;
+  type: ExerciseType;
+  variants?: string[];
+  selectedVariant?: string;
+  subs?: { label: string; value: string }[];
+  selectedSub?: string;
+  sets: WorkoutSetGym[] | WorkoutSetCalist[];
+  targetReps?: number;
+  holdType?: 'reps' | 'hold';
+  note?: string;
+  showNote?: boolean;
+}
+
+export interface WorkoutSession {
+  week: number;
+  day: string;
+  date: string;
+  time?: string;
+  exercises: WorkoutExercise[];
   completed: boolean;
   sessionNote?: string;
 }

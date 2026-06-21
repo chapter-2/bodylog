@@ -218,14 +218,7 @@
                         >You can still edit below</span
                     >
                 </div>
-                <GymWorkoutForm
-                    v-if="isGym"
-                    :week="currentWeek"
-                    :day="selectedDay"
-                    @saved="handleSaved"
-                />
-                <CalistWorkoutForm
-                    v-else
+                <WorkoutForm
                     :week="currentWeek"
                     :day="selectedDay"
                     @saved="handleSaved"
@@ -489,7 +482,8 @@ function selectDay(day: string) {
 
 async function loadHistory() {
     try {
-        const { data } = await secureFetch(`/api/${apiMode.value}/get`);
+        const exerciseType = isGym.value ? 'gym' : 'calist';
+        const { data } = await secureFetch(`/api/workout/get?exercise_type=${exerciseType}`);
         const sortedData = (data as any[]).sort(
             (a, b) => parseInt(b[0] || 0) - parseInt(a[0] || 0),
         );

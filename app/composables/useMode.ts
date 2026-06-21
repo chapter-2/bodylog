@@ -35,7 +35,11 @@ export const useMode = () => {
   const isCustom = computed(() => mode.value === "custom");
 
   const hasMode = computed(
-    () => mode.value === "gym" || mode.value === "calist",
+    () =>
+      mode.value === "gym" ||
+      mode.value === "calist" ||
+      mode.value === "cardio" ||
+      mode.value === "custom",
   );
 
   const setMode = (

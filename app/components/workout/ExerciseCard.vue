@@ -235,7 +235,7 @@ import { computed } from "vue";
 import { MessageSquare, Youtube } from "lucide-vue-next";
 
 const props = defineProps<{
-  mode: "gym" | "calist";
+  mode: "gym" | "calist" | "cardio" | "custom";
   week: number;
   lastWeekData?: { sets: string[]; name: string };
 }>();

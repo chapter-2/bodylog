@@ -123,7 +123,7 @@
 import { ref, computed } from "vue";
 
 const props = defineProps<{
-    mode: "gym" | "calist";
+    mode: "gym" | "calist" | "cardio" | "custom";
     activePalette: any;
 }>();
 
@@ -150,10 +150,22 @@ const calistEquipment = [
     "Chair",
     "Floor",
 ];
+const cardioEquipment = [
+    "Treadmill",
+    "Stationary Bike",
+    "Rowing Machine",
+    "Elliptical",
+    "Jump Rope",
+    "Swimming",
+    "Stair Climber",
+];
 
-const equipmentPresets = computed(() =>
-    props.mode === "gym" ? gymEquipment : calistEquipment,
-);
+const equipmentPresets = computed(() => {
+    if (props.mode === "gym") return gymEquipment;
+    if (props.mode === "calist") return calistEquipment;
+    if (props.mode === "cardio") return cardioEquipment;
+    return [];
+});
 
 const setSchemes = [
     { label: "3×5", sets: 3, reps: 5 },

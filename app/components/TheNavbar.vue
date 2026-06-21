@@ -26,7 +26,7 @@
                 >
                     <span class="font-mono text-primary text-[10px] -mt-3"
                         >01</span
-                    >{{ isGym ? "Gym Log" : "Calist Log" }}
+                    >{{ modeLabelFull }}
                 </NuxtLink>
                 <NuxtLink
                     to="/weight"
@@ -54,9 +54,8 @@
                         @click="triggerModeModal"
                         class="flex items-center gap-1.5 px-3 py-1.5 border border-separator rounded-full text-xs font-mono font-bold uppercase tracking-wider hover:border-primary hover:text-primary transition-colors"
                     >
-                        <Dumbbell v-if="isGym" class="w-3 h-3" />
-                        <Activity v-else class="w-3 h-3" />
-                        {{ isGym ? "GYM" : "CALIST" }}
+                        <component :is="modeIcon" class="w-3 h-3" />
+                        {{ modeLabel }}
                     </button>
 
                     <div v-if="isAuthenticated" class="relative">
@@ -145,7 +144,7 @@
                     >
                         <span class="text-primary text-sm font-mono mb-1 block"
                             >01</span
-                        >{{ isGym ? "GYM LOG" : "CALIST LOG" }}
+                        >{{ modeLabelFullCaps }}
                     </NuxtLink>
                     <NuxtLink
                         to="/weight"
@@ -188,9 +187,8 @@
                         <span
                             class="text-4xl font-black uppercase hover:text-primary transition-colors flex items-center gap-3"
                         >
-                            <Dumbbell v-if="isGym" class="w-8 h-8" />
-                            <Activity v-else class="w-8 h-8" />
-                            {{ isGym ? "GYM" : "CALIST" }}
+                            <component :is="modeIcon" class="w-8 h-8" />
+                            {{ modeLabel }}
                         </span>
                         <span class="text-xs font-mono text-primary mt-1 block"
                             >Tap to switch →</span
@@ -228,12 +226,61 @@ import {
     LogOut,
     Dumbbell,
     Activity,
+    Heart,
+    Wrench,
     ChevronDown,
     User,
 } from "lucide-vue-next";
 
 const { isAuthenticated, user } = useAuth();
-const { isGym } = useMode();
+const { mode } = useMode();
+
+const modeLabel = computed(() => {
+    switch (mode.value) {
+        case "gym":
+            return "GYM";
+        case "calist":
+            return "CALIST";
+        case "cardio":
+            return "CARDIO";
+        case "custom":
+            return "CUSTOM";
+        default:
+            return "GYM";
+    }
+});
+
+const modeLabelFull = computed(() => {
+    switch (mode.value) {
+        case "gym":
+            return "Gym Log";
+        case "calist":
+            return "Calist Log";
+        case "cardio":
+            return "Cardio Log";
+        case "custom":
+            return "Custom";
+        default:
+            return "Gym Log";
+    }
+});
+
+const modeLabelFullCaps = computed(() => modeLabelFull.value.toUpperCase());
+
+const modeIcon = computed(() => {
+    switch (mode.value) {
+        case "gym":
+            return Dumbbell;
+        case "calist":
+            return Activity;
+        case "cardio":
+            return Heart;
+        case "custom":
+            return Wrench;
+        default:
+            return Dumbbell;
+    }
+});
 
 const isMenuOpen = useState("isMenuOpen", () => false);
 const isUserMenuOpen = ref(false);
