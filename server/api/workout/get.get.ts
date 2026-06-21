@@ -4,21 +4,24 @@ export default defineEventHandler(async (event) => {
   try {
     const db = getDb();
     const query = getQuery(event);
+    const exerciseType = query.exercise_type as string | undefined;
     const day = query.day as string | undefined;
     const userId = event.context.user_id;
 
-    let result;
-    if (day) {
-      result = await db.execute({
-        sql: "SELECT * FROM gym_sessions WHERE user_id = ? AND day = ? ORDER BY week ASC",
-        args: [userId, day],
-      });
-    } else {
-      result = await db.execute({
-        sql: "SELECT * FROM gym_sessions WHERE user_id = ? ORDER BY week DESC",
-        args: [userId],
-      });
+    let sql = "SELECT * FROM workout_sessions WHERE user_id = ?";
+    const args: any[] = [userId];
+
+    if (exerciseType) {
+      sql += " AND exercise_type = ?";
+      args.push(exerciseType);
     }
+    if (day) {
+      sql += " AND day = ?";
+      args.push(day);
+    }
+    sql += " ORDER BY week DESC";
+
+    const result = await db.execute({ sql, args });
 
     const data = result.rows.map((r: any) => [
       r.week.toString(),
@@ -33,6 +36,7 @@ export default defineEventHandler(async (event) => {
       r.completed ?? "NO",
       r.notes ?? "",
       r.session_note ?? "",
+      r.exercise_type,
     ]);
 
     return { data };

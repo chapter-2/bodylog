@@ -51,7 +51,7 @@ export async function initDb(): Promise<void> {
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
       UNIQUE(user_id, week)
     );
-    CREATE TABLE IF NOT EXISTS gym_sessions (
+    CREATE TABLE IF NOT EXISTS workout_sessions (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id       INTEGER NOT NULL,
       week          INTEGER NOT NULL,
@@ -59,6 +59,7 @@ export async function initDb(): Promise<void> {
       date          TEXT    NOT NULL,
       time          TEXT    DEFAULT '',
       exercise_name TEXT    NOT NULL,
+      exercise_type TEXT    NOT NULL DEFAULT 'gym',
       set1          TEXT    DEFAULT '-',
       set2          TEXT    DEFAULT '-',
       set3          TEXT    DEFAULT '-',
@@ -67,25 +68,7 @@ export async function initDb(): Promise<void> {
       notes         TEXT    DEFAULT '',
       session_note  TEXT    DEFAULT '',
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-      UNIQUE(user_id, week, day, exercise_name)
-    );
-    CREATE TABLE IF NOT EXISTS calist_sessions (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id       INTEGER NOT NULL,
-      week          INTEGER NOT NULL,
-      day           TEXT    NOT NULL,
-      date          TEXT    NOT NULL,
-      time          TEXT    DEFAULT '',
-      exercise_name TEXT    NOT NULL,
-      set1          TEXT    DEFAULT '-',
-      set2          TEXT    DEFAULT '-',
-      set3          TEXT    DEFAULT '-',
-      set4          TEXT    DEFAULT '-',
-      completed     TEXT    DEFAULT 'NO',
-      notes         TEXT    DEFAULT '',
-      session_note  TEXT    DEFAULT '',
-      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-      UNIQUE(user_id, week, day, exercise_name)
+      UNIQUE(user_id, week, day, exercise_type, exercise_name)
     );
     CREATE TABLE IF NOT EXISTS program_config (
       user_id INTEGER NOT NULL,
