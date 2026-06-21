@@ -343,7 +343,7 @@ import {
 } from "lucide-vue-next";
 import { ref, computed, onMounted, watch } from "vue";
 
-const { isGym } = useMode();
+const { isGym, mode: currentMode } = useMode();
 const { isAuthenticated, checkAuth, secureFetch } = useAuth();
 
 const isLoading = ref(true);
@@ -398,7 +398,7 @@ const emptyHistoryGuestText = computed(() =>
 );
 const emptyIcon = computed(() => (isGym.value ? Dumbbell : Activity));
 
-const apiMode = computed(() => (isGym.value ? "gym" : "calist"));
+const apiMode = computed(() => currentMode.value || "gym");
 
 function getDayName(dayValue: string) {
     if (globalConfig.value[dayValue]?.name) return globalConfig.value[dayValue].name;
@@ -535,6 +535,18 @@ function handleSaved() {
 
 watch(currentWeek, () => {
     selectFirstIncompleteDay();
+});
+
+watch(() => currentMode.value, async () => {
+    if (isAuthenticated.value) {
+        const configRes = (await secureFetch(
+            `/api/program/get?mode=${currentMode.value}`,
+        ).catch(() => ({}))) as any;
+        if (configRes?.start_date) PROGRAM_START_DATE.value = new Date(configRes.start_date);
+        if (configRes?.config) globalConfig.value = configRes.config;
+        await loadHistory();
+    }
+    initializeProgram();
 });
 
 onMounted(async () => {

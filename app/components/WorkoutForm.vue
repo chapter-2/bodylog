@@ -666,6 +666,30 @@ async function reloadData() {
 watch(() => props.day, reloadData);
 watch(() => props.week, reloadData);
 
+watch(() => currentMode.value, async () => {
+  const fetchId = ++currentFetchId;
+  isLoadingData.value = true;
+  try {
+    const res = (await secureFetch(
+      `/api/program/get?mode=${currentMode.value}`,
+    ).catch(() => ({}))) as any;
+    if (res?.config) customProgram.value = res.config;
+    else customProgram.value = null;
+  } catch {
+    customProgram.value = null;
+  }
+  initializeExercises();
+  sessionNote.value = "";
+  completed.value = false;
+  lastWeekData.value = {};
+  if (dayName.value !== "REST DAY") {
+    await Promise.all([loadLastWeekData(), loadCurrentSession()]);
+    if (fetchId !== currentFetchId) return;
+    localStorage.removeItem(draftKey.value);
+  }
+  isLoadingData.value = false;
+});
+
 onMounted(async () => {
   isLoadingData.value = true;
   try {
