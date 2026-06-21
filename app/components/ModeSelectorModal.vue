@@ -88,8 +88,7 @@ const { setMode, hasMode } = useMode();
 function selectDirectMode(m: "gym" | "calist") {
     setMode(m);
     emit("close");
-    if (m === "gym") navigateTo("/gym");
-    else navigateTo("/calist");
+    navigateTo("/workout");
 }
 </script>
 

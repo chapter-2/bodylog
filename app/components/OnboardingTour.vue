@@ -262,14 +262,10 @@ onUnmounted(() => {
 async function nextStep() {
     if (step.value === 3) {
         step.value = 4;
-        await navigateTo(
-            `${mode.value === "gym" ? "/gym" : "/calist"}?tour=step4`,
-        );
+        await navigateTo(`/workout?tour=step4`);
     } else if (step.value === 4) {
         step.value = 5;
-        await navigateTo(
-            `${mode.value === "gym" ? "/gym" : "/calist"}?tour=step5`,
-        );
+        await navigateTo(`/workout?tour=step5`);
     } else if (step.value === 5) {
         step.value = 6;
         await navigateTo("/profile?tour=step6");

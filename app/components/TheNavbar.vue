@@ -20,24 +20,13 @@
                     >Home
                 </NuxtLink>
                 <NuxtLink
-                    v-if="isGym"
-                    to="/gym"
+                    to="/workout"
                     id="nav-log"
                     class="flex items-center gap-1 text-sm font-bold uppercase tracking-wide hover:text-primary transition-colors"
                 >
                     <span class="font-mono text-primary text-[10px] -mt-3"
                         >01</span
-                    >Gym Log
-                </NuxtLink>
-                <NuxtLink
-                    v-else
-                    to="/calist"
-                    id="nav-log"
-                    class="flex items-center gap-1 text-sm font-bold uppercase tracking-wide hover:text-primary transition-colors"
-                >
-                    <span class="font-mono text-primary text-[10px] -mt-3"
-                        >01</span
-                    >Calist Log
+                    >{{ isGym ? "Gym Log" : "Calist Log" }}
                 </NuxtLink>
                 <NuxtLink
                     to="/weight"
@@ -149,26 +138,14 @@
                         >HOME
                     </NuxtLink>
                     <NuxtLink
-                        v-if="isGym"
-                        to="/gym"
+                        to="/workout"
                         id="mob-log"
                         @click="isMenuOpen = false"
                         class="text-4xl font-black uppercase hover:text-primary transition-colors block"
                     >
                         <span class="text-primary text-sm font-mono mb-1 block"
                             >01</span
-                        >GYM LOG
-                    </NuxtLink>
-                    <NuxtLink
-                        v-else
-                        to="/calist"
-                        id="mob-log"
-                        @click="isMenuOpen = false"
-                        class="text-4xl font-black uppercase hover:text-primary transition-colors block"
-                    >
-                        <span class="text-primary text-sm font-mono mb-1 block"
-                            >01</span
-                        >CALIST LOG
+                        >{{ isGym ? "GYM LOG" : "CALIST LOG" }}
                     </NuxtLink>
                     <NuxtLink
                         to="/weight"
