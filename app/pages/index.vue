@@ -38,8 +38,14 @@
           class="inline-flex items-center justify-center gap-2 px-8 py-4 bg-foreground-primary text-white font-bold uppercase tracking-widest text-sm hover:bg-primary transition-all shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5"
         >
           <Dumbbell v-if="isGym" class="w-5 h-5" />
-          <Activity v-else class="w-5 h-5" />
-          Open {{ isGym ? "Gym" : "Calist" }} Log
+          <Activity v-else-if="isCalist" class="w-5 h-5" />
+          <Heart v-else-if="isCardio" class="w-5 h-5" />
+          <Puzzle v-else class="w-5 h-5" />
+          Open
+          {{
+            isGym ? "Gym" : isCalist ? "Calist" : isCardio ? "Cardio" : "Custom"
+          }}
+          Log
         </NuxtLink>
         <NuxtLink
           to="/coach"
@@ -107,16 +113,40 @@
             class="w-6 h-6 text-primary mb-3 group-hover:-rotate-12 transition-transform"
           />
           <Activity
+            v-else-if="isCalist"
+            class="w-6 h-6 text-primary mb-3 group-hover:scale-110 transition-transform"
+          />
+          <Heart
+            v-else-if="isCardio"
+            class="w-6 h-6 text-primary mb-3 group-hover:scale-110 transition-transform"
+          />
+          <Puzzle
             v-else
             class="w-6 h-6 text-primary mb-3 group-hover:scale-110 transition-transform"
           />
           <p
             class="font-bold text-sm uppercase group-hover:text-primary transition-colors"
           >
-            {{ isGym ? "Gym Log" : "Calist Log" }}
+            {{
+              isGym
+                ? "Gym Log"
+                : isCalist
+                  ? "Calist Log"
+                  : isCardio
+                    ? "Cardio Log"
+                    : "Custom Program"
+            }}
           </p>
           <p class="font-mono text-xs text-foreground-text opacity-60 mt-1">
-            Log today's session
+            {{
+              isGym
+                ? "Log today's session"
+                : isCalist
+                  ? "Log today's session"
+                  : isCardio
+                    ? "Track cardio session"
+                    : "Run custom routine"
+            }}
           </p>
         </NuxtLink>
 
@@ -251,6 +281,64 @@
             <div
               class="w-14 h-14 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors"
             >
+              <Puzzle
+                class="w-7 h-7 text-primary group-hover:text-white transition-colors"
+                :stroke-width="1.5"
+              />
+            </div>
+            <div>
+              <h3
+                class="text-2xl font-black uppercase text-foreground-primary mb-2 group-hover:text-primary transition-colors"
+              >
+                Custom Programs
+              </h3>
+              <p
+                class="font-mono text-sm text-foreground-text leading-relaxed opacity-80"
+              >
+                Buat program latihan sendiri dengan hari, gerakan, dan target
+                set khusus. Per-exercise type (gym/calist/cardio) dalam satu
+                program. Fleksibel tanpa batasan template.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="p-8 md:p-10 group hover:bg-[#fcfbf7] transition-colors border-t-2 border-foreground-primary"
+        >
+          <div class="flex items-start gap-5">
+            <div
+              class="w-14 h-14 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors"
+            >
+              <Heart
+                class="w-7 h-7 text-primary group-hover:text-white transition-colors"
+                :stroke-width="1.5"
+              />
+            </div>
+            <div>
+              <h3
+                class="text-2xl font-black uppercase text-foreground-primary mb-2 group-hover:text-primary transition-colors"
+              >
+                Cardio Log
+              </h3>
+              <p
+                class="font-mono text-sm text-foreground-text leading-relaxed opacity-80"
+              >
+                Catat durasi, jarak, dan jenis kardio terintegrasi dalam satu
+                ekosistem. Konsisten dengan pola pencatatan mingguan dan riwayat
+                progres.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="p-8 md:p-10 group hover:bg-[#fcfbf7] transition-colors border-t-2 border-foreground-primary"
+        >
+          <div class="flex items-start gap-5">
+            <div
+              class="w-14 h-14 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors"
+            >
               <Scale
                 class="w-7 h-7 text-primary group-hover:text-white transition-colors"
                 :stroke-width="1.5"
@@ -355,7 +443,16 @@
         to="/workout"
         class="inline-flex items-center gap-3 px-10 py-5 bg-primary text-white font-black uppercase tracking-widest text-base hover:bg-foreground-primary transition-all shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5"
       >
-        Open Log →
+        {{
+          isGym
+            ? "Open Gym Log"
+            : isCalist
+              ? "Open Calist Log"
+              : isCardio
+                ? "Open Cardio Log"
+                : "Open Custom Log"
+        }}
+        →
       </NuxtLink>
     </section>
   </div>
@@ -369,9 +466,11 @@ import {
   BrainCircuit,
   Settings2,
   ShieldCheck,
+  Heart,
+  Puzzle,
 } from "lucide-vue-next";
 
-const { mode, isGym, isCalist, hasMode, setMode } = useMode();
+const { mode, isGym, isCalist, isCardio, hasMode, setMode } = useMode();
 const { isAuthenticated } = useAuth();
 
 const showSetupModal = ref(false);
