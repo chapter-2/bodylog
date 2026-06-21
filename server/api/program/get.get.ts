@@ -2,10 +2,10 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const mode = query.mode as string | undefined;
 
-  if (!mode || !["gym", "calist"].includes(mode)) {
+  if (!mode || !["gym", "calist", "cardio", "custom"].includes(mode)) {
     throw createError({
       statusCode: 400,
-      message: 'mode must be "gym" or "calist"',
+      message: 'mode must be "gym", "calist", "cardio", or "custom"',
     });
   }
 

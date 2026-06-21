@@ -59,7 +59,7 @@ export async function initDb(): Promise<void> {
       date          TEXT    NOT NULL,
       time          TEXT    DEFAULT '',
       exercise_name TEXT    NOT NULL,
-      exercise_type TEXT    NOT NULL DEFAULT 'gym',
+      mode          TEXT    NOT NULL DEFAULT 'gym',
       set1          TEXT    DEFAULT '-',
       set2          TEXT    DEFAULT '-',
       set3          TEXT    DEFAULT '-',
@@ -68,7 +68,7 @@ export async function initDb(): Promise<void> {
       notes         TEXT    DEFAULT '',
       session_note  TEXT    DEFAULT '',
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-      UNIQUE(user_id, week, day, exercise_type, exercise_name)
+      UNIQUE(user_id, week, day, mode, exercise_name)
     );
     CREATE TABLE IF NOT EXISTS program_config (
       user_id INTEGER NOT NULL,

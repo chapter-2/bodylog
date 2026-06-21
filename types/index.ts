@@ -70,7 +70,7 @@ export interface CalistSession {
 
 // ─── Unified types (replace old types above) ───
 
-export type ExerciseType = 'gym' | 'calist' | 'cardio';
+export type ExerciseType = 'gym' | 'calist' | 'cardio' | 'custom';
 
 export interface WorkoutSetGym { weight: number; reps: number; }
 export interface WorkoutSetCalist { value: number; unit: 'reps' | 's'; }

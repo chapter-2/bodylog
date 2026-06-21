@@ -482,8 +482,7 @@ function selectDay(day: string) {
 
 async function loadHistory() {
     try {
-        const exerciseType = isGym.value ? 'gym' : 'calist';
-        const { data } = await secureFetch(`/api/workout/get?exercise_type=${exerciseType}`);
+        const { data } = await secureFetch(`/api/workout/get?mode=${apiMode.value}`);
         const sortedData = (data as any[]).sort(
             (a, b) => parseInt(b[0] || 0) - parseInt(a[0] || 0),
         );

@@ -229,7 +229,7 @@ async function handleSummonTrainer() {
     loading.value = true;
     try {
         const [mainRes, weightRes] = await Promise.all([
-            secureFetch(`/api/workout/get?exercise_type=${isGym.value ? 'gym' : 'calist'}`),
+            secureFetch(`/api/workout/get?mode=${isGym.value ? 'gym' : 'calist'}`),
             secureFetch("/api/weight/get"),
         ]);
 

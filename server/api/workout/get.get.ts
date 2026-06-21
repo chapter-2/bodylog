@@ -1,19 +1,28 @@
+const VALID_MODES = ['gym', 'calist', 'cardio', 'custom'];
+
 export default defineEventHandler(async (event) => {
   await requireAuth(event);
 
   try {
     const db = getDb();
     const query = getQuery(event);
-    const exerciseType = query.exercise_type as string | undefined;
+    const mode = query.mode as string | undefined;
     const day = query.day as string | undefined;
     const userId = event.context.user_id;
+
+    if (mode && !VALID_MODES.includes(mode)) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: `Invalid mode: ${mode}. Must be one of ${VALID_MODES.join(', ')}`,
+      });
+    }
 
     let sql = "SELECT * FROM workout_sessions WHERE user_id = ?";
     const args: any[] = [userId];
 
-    if (exerciseType) {
-      sql += " AND exercise_type = ?";
-      args.push(exerciseType);
+    if (mode) {
+      sql += " AND mode = ?";
+      args.push(mode);
     }
     if (day) {
       sql += " AND day = ?";
@@ -36,7 +45,7 @@ export default defineEventHandler(async (event) => {
       r.completed ?? "NO",
       r.notes ?? "",
       r.session_note ?? "",
-      r.exercise_type,
+      r.mode,
     ]);
 
     return { data };

@@ -279,7 +279,7 @@ async function loadLastWeekData() {
   if (props.week <= 1) return;
   try {
     if (dayName.value === "REST DAY") return;
-    const { data } = await secureFetch(`/api/workout/get?day=${dayName.value}`);
+    const { data } = await secureFetch(`/api/workout/get?day=${dayName.value}&mode=${currentMode.value}`);
     const lastWeekWorkouts = (data as any[]).filter(
       (row: any) => parseInt(row[0]) === props.week - 1,
     );
@@ -318,7 +318,7 @@ async function loadLastWeekData() {
 async function loadCurrentSession() {
   try {
     if (dayName.value === "REST DAY") return;
-    const { data } = await secureFetch(`/api/workout/get?day=${dayName.value}`);
+    const { data } = await secureFetch(`/api/workout/get?day=${dayName.value}&mode=${currentMode.value}`);
     const currentSessionRows = (data as any[]).filter(
       (row: any) => parseInt(row[0]) === props.week,
     );
@@ -428,6 +428,7 @@ async function saveWorkout() {
         day: dayName.value,
         date: dateStr,
         time: timeStr,
+        mode: currentMode.value,
         exercises: exercisePayload,
         completed: completed.value,
         sessionNote: sessionNote.value || "",
