@@ -20,8 +20,10 @@ logs
 
 # Local env files
 .env
+.envrc
 .env.*
 !.env.example
+!.envrc.example
 
 # Other
 CLAUDE.md
