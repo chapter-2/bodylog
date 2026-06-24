@@ -6,20 +6,24 @@ export default defineEventHandler(async (event) => {
 
   try {
     const db = getDb();
+    const userId = event.context.user_id;
     const gymSessions = await db.execute(
-      "SELECT * FROM workout_sessions WHERE mode = 'gym' ORDER BY week ASC",
+      "SELECT * FROM workout_sessions WHERE user_id = ? AND mode = 'gym' ORDER BY week ASC",
+      [userId],
     );
     const calistSessions = await db.execute(
-      "SELECT * FROM workout_sessions WHERE mode = 'calist' ORDER BY week ASC",
+      "SELECT * FROM workout_sessions WHERE user_id = ? AND mode = 'calist' ORDER BY week ASC",
+      [userId],
     );
     const weights = await db.execute(
-      "SELECT * FROM weight_entries ORDER BY week ASC",
+      "SELECT * FROM weight_entries WHERE user_id = ? ORDER BY week ASC",
+      [userId],
     );
 
     return {
-      gym: gymSessions.rows,
-      calist: calistSessions.rows,
-      weight: weights.rows,
+      gym_sessions: gymSessions.rows,
+      calist_sessions: calistSessions.rows,
+      weight_entries: weights.rows,
     };
   } catch (error: any) {
     throw createError({ statusCode: 500, message: error.message });
